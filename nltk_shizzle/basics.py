@@ -1,5 +1,8 @@
 """ This module will be used to record essential tidbits on how to use NLTK """
+from __future__ import division     # use python3 division
 import nltk
+import re                           # regular expression module
+import pprint                       # pretty printing!
 
 #from nltk.corpus import webtext      # webtext is web stuff
 #from nltk.corpus import brown        # Brown corpus contains 500 texts from various genres
@@ -69,5 +72,31 @@ def names():
 
     cfd.plot()
 
+def wordnet(word):
+    """ English wordnet is installed with the NLTK data """
+    from nltk.corpus import wordnet as wn
+
+    print 'SYNONYMS', wn.synsets(word)
+    print 'DEFINITION', wn.synset('knock.n.03').definition
+    print 'EXAMPLES', wn.synset('knock.n.03').examples
+    print 'LEMMA NAMES', wn.synset('knock.n.03').lemma_names
+
+
+def online_resources():
+    """ Accessing online resources """
+    # require urlopen to be able to access online resources
+    from urllib import urlopen
+
+    url = "http://www.gutenberg.org/files/2554/2554.txt"
+    raw = urlopen(url).read()
+
+    # split the string into tokens, words and punctuation
+    tokens = nltk.word_tokenize(raw)
+
+    # now can convert the tokens into NLTK text
+    # before computing anything may want to slice off irrelevant headers/footers
+    text = nltk.Text(tokens)
+    print text.collocations()
+
 if __name__ == '__main__':
-    names()
+    online_resources()
