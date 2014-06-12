@@ -1,0 +1,3 @@
+*.swp           # temp vim files
+*.pyc           # compiled python bytecode
+.DS_Store       # osx metadata file
