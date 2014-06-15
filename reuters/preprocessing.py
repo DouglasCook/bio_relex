@@ -127,8 +127,8 @@ def count_stats():
         print d_count, 'drug texts and', c_count, 'company texts', docs, 'unique texts'
 
 
-def preprocess():
-    """ Reduce dataset to only those where text contains mentions of both entities """
+def preprocess_view():
+    """ Display all sentences containing drug, company or both"""
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
@@ -150,21 +150,93 @@ def preprocess():
             drug = row[3]
             company = row[5]
 
+            # only consider texts containing both the drug and company
+            if drug in plaintext and company in plaintext:
+                print '------ RECORD NUMBER', row[0], ', COMPANY =', company, ', DRUG =', drug, '------\n'
 
-            # split the text into sentences and filter for only those mentioning both drug and company 
-            sentences = nltk.sent_tokenize(plaintext)
-            sentences = [s for s in sentences if drug in s]
-            sentences = [s for s in sentences if company in s]
+                sentences = nltk.sent_tokenize(plaintext)
 
-            #sentences = [nltk.word_tokenize(s) for s in sentences]
-            #sentences = [nltk.pos_tag(s) for s in sentences]
+                # filter for only sentences mentioning drug, company or both
+                sentences = [s for s in sentences if drug in s or company in s]
 
-            if len(sentences) > 0:
-                count += 1
-                for s in sentences:
-                    print s, '\n'
+                # filter for only those mentioning both drug and company 
+                #sentences = [s for s in sentences if company in s]
+
+                #sentences = [nltk.word_tokenize(s) for s in sentences]
+                #sentences = [nltk.pos_tag(s) for s in sentences]
+
+                if len(sentences) > 0:
+                    count += 1
+                    for s in sentences:
+                        print s, '\n'
 
         print count, 'sentences in total'
+
+
+def preprocess():
+    """ Create new CSV containing all relevant sentences """
+    # using sys for std out
+    import sys
+    import nltk.tokenize.punkt as punkt
+
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    filepath = 'data/reuters/press_releases/PR_drug_company_500.csv'
+    filepath = os.path.abspath(os.path.join(basepath, '..', '..', filepath))
+
+    # set up sentence splitter with custom parameters
+    punkt_params = punkt.PunktParameters()
+    # sentences are not split ending on the given parameters, using {} creates a set literal
+    punkt_params.abbrev_types = {'inc', 'inc ', '.tm', 'tm', 'no', 'i.v', 'drs', 'u.s'}
+    # the tokenizer has to be unpickled so creating it here is more efficient than every time it is used
+    sentence_splitter = punkt.PunktSentenceTokenizer(punkt_params)
+
+    with open(filepath, 'rb') as csv_in:
+        with open('sentences_POS.csv', 'wb') as csv_out:
+            csv_reader = csv.reader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            # write column headers on first row
+            row = csv_reader.next()
+            csv_writer.writerow([row[0], 'SENTENCE', 'POS TAGS', row[2], row[3], row[4], row[5]])
+
+            for row in csv_reader:
+                # use stdout to avoid spaces and newlines
+                sys.stdout.write('.')
+                # need to flush the buffer to display immediately
+                sys.stdout.flush()
+
+                # clean up html tags
+                plaintext = nltk.clean_html(row[1])
+                drug = row[3]
+                company = row[5]
+                src = row[0]
+
+                # only consider texts containing both the drug and company
+                if drug in plaintext and company in plaintext:
+                    sentences = sentence_splitter.tokenize(plaintext)
+
+                    # filter for only sentences mentioning drug, company or both
+                    sentences = [s for s in sentences if drug in s or company in s]
+
+                    # TODO clean up text more, remove stop words and punctuation
+
+                    if len(sentences) > 0:
+                        for s in sentences:
+                            tokens = nltk.word_tokenize(s)
+                            tags = nltk.pos_tag(tokens)
+                            # TODO add chunk info, parse tree info, something to do with stemming?
+                            # write row to file for each sentence
+                            csv_writer.writerow([src, s, tags, row[2], drug, row[4], company])
+
+
+def experiment():
+    """ Create new CSV containing all relevant sentences """
+
+    with open('sentences_POS.csv', 'rb') as csv_in:
+        csv_reader = csv.reader(csv_in, delimiter=',')
+        for row in csv_reader:
+            print nltk.ne_chunk(row[2])
 
 if __name__ == '__main__':
     preprocess()
