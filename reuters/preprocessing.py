@@ -188,11 +188,12 @@ def preprocess():
     punkt_params = punkt.PunktParameters()
     # sentences are not split ending on the given parameters, using {} creates a set literal
     punkt_params.abbrev_types = {'inc', 'inc ', '.tm', 'tm', 'no', 'i.v', 'drs', 'u.s'}
-    # the tokenizer has to be unpickled so creating it here is more efficient than every time it is used
+    # the tokenizer has to be unpickled so better do it once here than every time it is used
     sentence_splitter = punkt.PunktSentenceTokenizer(punkt_params)
 
     with open(filepath, 'rb') as csv_in:
         with open('sentences_POS.csv', 'wb') as csv_out:
+            # TODO use dictionary reader to avoid using magic numbers for columns
             csv_reader = csv.reader(csv_in, delimiter=',')
             csv_writer = csv.writer(csv_out, delimiter=',')
 
@@ -217,6 +218,7 @@ def preprocess():
                     sentences = sentence_splitter.tokenize(plaintext)
 
                     # filter for only sentences mentioning drug, company or both
+                    # TODO coreference resolution to find more relevant sentences
                     sentences = [s for s in sentences if drug in s or company in s]
 
                     # TODO clean up text more, remove stop words and punctuation
