@@ -1,13 +1,16 @@
 import nltk
 import csv              # used for accessing data held in CSV format
 import os.path          # need this to use relative filepaths
+import sys              # using sys for std out
+
+import tagging
+import chunking
+
+import nltk.tokenize.punkt as punkt
 
 
 def clean_and_tag():
     """ Create new CSV containing all relevant sentences """
-    # using sys for std out
-    import sys
-    import nltk.tokenize.punkt as punkt
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
@@ -52,22 +55,40 @@ def clean_and_tag():
                     # TODO coreference resolution to find more relevant sentences
                     sentences = [s for s in sentences if drug in s or company in s]
 
-                    # TODO clean up text more, remove stop words and punctuation
-
                     if len(sentences) > 0:
                         for s in sentences:
                             # remove punctuation, still want to add original sentence to CSV though
                             #no_punct = re.findall(r'[\w\$\xc2()-]+', s)
                             #no_punct = ' '.join(no_punct)
-                            #print no_punct
                             tokens = nltk.word_tokenize(s)
                             tags = nltk.pos_tag(tokens)
 
-                            # TODO add chunk info, parse tree info, something to do with stemming?
+                            # TODO parse tree info, something to do with stemming?
                             # write row to file for each sentence
                             row.append(tags)
                             csv_writer.writerow([src, s, row[2], drug, row[4], company, tags])
 
 
+def boom():
+    tagging.clean_and_tag()
+    chunking.chunk('reuters/data/sentences_POS.csv', 'reuters/data/sentences_chunk.csv')
+
+
+def only_easy():
+    """
+    Strip out any sentences not mentioning both drug and company
+    """
+    with open('data/sentences_chunk.csv', 'rb') as csv_in:
+        with open('data/sentences_easy_set.csv', 'wb') as csv_out:
+            csv_reader = csv.reader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            row = csv_reader.next()
+            csv_writer.writerow(row)
+
+            for row in csv_reader:
+                if row[3] in row[1] and row[5] in row[1]:
+                    csv_writer.writerow(row)
+
 if __name__ == '__main__':
-    clean_and_tag()
+    only_easy()
