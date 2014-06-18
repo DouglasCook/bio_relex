@@ -3,8 +3,7 @@ import csv              # used for accessing data held in CSV format
 import os.path          # need this to use relative filepaths
 import sys              # using sys for std out
 
-import tagging
-import chunking
+import preprocessing
 
 import nltk.tokenize.punkt as punkt
 
@@ -58,6 +57,7 @@ def clean_and_tag():
                     if len(sentences) > 0:
                         for s in sentences:
                             # remove punctuation, still want to add original sentence to CSV though
+                            # \xc2 = £
                             #no_punct = re.findall(r'[\w\$\xc2()-]+', s)
                             #no_punct = ' '.join(no_punct)
                             tokens = nltk.word_tokenize(s)
@@ -70,8 +70,8 @@ def clean_and_tag():
 
 
 def boom():
-    tagging.clean_and_tag()
-    chunking.chunk('reuters/data/sentences_POS.csv', 'reuters/data/sentences_chunk.csv')
+    preprocessing.clean_and_tag()
+    preprocessing.chunk('reuters/data/sentences_POS.csv', 'reuters/data/sentences_chunk.csv')
 
 
 def only_easy():
