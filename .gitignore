@@ -2,4 +2,5 @@
 *.pyc
 .DS_Store
 *.csv
+*.xml
 .idea/
