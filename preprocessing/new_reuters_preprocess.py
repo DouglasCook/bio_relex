@@ -126,6 +126,54 @@ def clean_and_tag_all():
                         csv_writer.writerow([row['SOURCE_ID'], s, row['DRUGS'], row['COMPANIES'], tags])
 
 
+def locate_entities():
+    """
+    Locate named drugs and companies, indexed by word
+    """
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            # write headers
+            csv_writer.writerow(['SOURCE_ID', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS'])
+
+            for row in csv_reader:
+                drug_dict = {}
+                comp_dict = {}
+                tags = eval(row['POS_TAGS'])
+
+                for drug in eval(row['DRUGS']):
+                    # locate first word if entity is made of multiple words
+                    space = drug.find(' ')
+                    if space > 0:
+                        head_word = drug[:space]
+                    else:
+                        head_word = drug
+
+                    # add indices of head word to dict entry for this drug
+                    drug_dict[drug] = [i for i, x in enumerate(tags) if x[0] == head_word]
+
+                for company in eval(row['COMPANIES']):
+                    # locate first word if entity is made of multiple words
+                    space = company.find(' ')
+                    if space > 0:
+                        head_word = company[:space]
+                    else:
+                        head_word = company
+
+                    # add indices of head word to dict entry for this drug
+                    comp_dict[company] = [i for i, x in enumerate(tags) if x[0] == head_word]
+
+                csv_writer.writerow([row['SOURCE_ID'], row['SENTENCE'], drug_dict, comp_dict, tags])
+
+
 if __name__ == '__main__':
-    collate_texts()
-    clean_and_tag_all()
+    #collate_texts()
+    #clean_and_tag_all()
+    locate_entities()
