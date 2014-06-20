@@ -94,11 +94,11 @@ def chunk(f_in, f_out):
                 result = cp.parse(l)
                 # can also draw the tree with result.draw()
                 # convert to IOB tags
-                result = nltk.chunk.util.tree2conlltags(result)
+                #result = nltk.chunk.util.tree2conlltags(result)
 
                 # TODO clean up text more, remove stop words
                 # strip out any punctuation at this point, chunking works better if some punctuation is left in
-                result = [(x, y, z) for (x, y, z) in result if re.search(r'\w+', y)]
+                #result = [(x, y, z) for (x, y, z) in result if re.search(r'\w+', y)]
 
                 # write row
                 row[-1] = result
