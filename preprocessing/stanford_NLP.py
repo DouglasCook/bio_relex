@@ -1,5 +1,6 @@
 import os
 import csv
+import re
 
 
 def stanford_input_split_sentences():
@@ -66,5 +67,70 @@ def stanford_input():
                     f_out.write(row['FRAGMENT'])
 
 
+def entities_only(filename):
+    """
+    Extract all named entities from the text file
+    """
+
+    with open(filename, 'r') as f_in:
+        text = f_in.read()
+        # regex to match words within tags
+        entities = re.findall('<.{,12}>.+?</', text)
+        # strip tags and remove duplicates
+        entities = set([x[x.find('>')+1:x.rfind('<')] for x in entities])
+
+    return entities
+
+
+def other_entities():
+    """
+    Locate named entities tagged by Stanford NER tool
+    """
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/all_entities_marked.csv'))
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            # write headers
+            csv_writer.writerow(['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'OTHER', 'POS_TAGS'])
+
+            for row in csv_reader:
+                # extract tagged entities from preprocessed file
+                ne_filepath = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/named_entities'))
+                entities = entities_only(ne_filepath + '/' + row['SOURCE_ID'] + '.txt')
+
+                entities_dict = {}
+                drug_dict = eval(row['DRUGS'])
+                comp_dict = eval(row['COMPANIES'])
+                tags = eval(row['POS_TAGS'])
+
+                for entity in entities:
+                    # locate first word if entity is made of multiple words
+                    # TODO this method does not work well in this situtation end up with loads of duplicate indices
+                    space = entity.find(' ')
+                    if space > 0:
+                        head_word = entity[:space]
+                    else:
+                        head_word = entity
+                    # underscores are used in the tokens so need to replace before searching
+                    if head_word.find('-') > 0:
+                        head_word = head_word.replace('-', '_')
+
+                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    # only add to other entities if it doesn't match an existing drug or company
+                    if len(indices) > 0 and indices not in drug_dict.values() and indices not in comp_dict.values():
+                        entities_dict[entity] = indices
+
+                csv_writer.writerow([row['SOURCE_ID'], row['SENT_NUM'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
+                                     entities_dict, tags])
+
+    print 'Written to all_entities_marked.csv'
+
 if __name__ == '__main__':
-    stanford_input_split_sentences()
+    other_entities()
+    #stanford_input_split_sentences()

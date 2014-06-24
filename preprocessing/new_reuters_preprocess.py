@@ -143,7 +143,7 @@ def clean_and_tag_all():
 def stanford_entity_recognition():
     """
     Produce NE chunks from POS tags - this uses the Stanford tagger implementation
-    This needs to be done before the punctuation is removed?
+    This is actually too slow to be of any use, there must be a way to batch it but for now just using bash script
     """
 
     # set filepath to input
@@ -172,7 +172,7 @@ def stanford_entity_recognition():
     print 'Written to sentences_NE.csv'
 
 
-def entity_recognition():
+def nltk_entity_recognition():
     """
     Produce NE chunks from POS tags - this NLTK implementation is not great though so should use Stanford output instead
     This needs to be done before the punctuation is removed
@@ -203,7 +203,7 @@ def entity_recognition():
                 # row['POS_TAGS'], ne_chunks])
 
 
-def locate_entities():
+def drug_and_company_entities():
     """
     Locate named drugs and companies, indexed by word
     """
@@ -237,7 +237,9 @@ def locate_entities():
                         head_word = head_word.replace('-', '_')
 
                     # add indices of head word to dict entry for this drug
-                    drug_dict[drug] = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    if len(indices) > 0:
+                        drug_dict[drug] = indices
 
                 for company in eval(row['COMPANIES']):
                     # locate first word if entity is made of multiple words
@@ -251,7 +253,9 @@ def locate_entities():
                         head_word = head_word.replace('-', '_')
 
                     # add indices of head word to dict entry for this drug
-                    comp_dict[company] = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    if len(indices) > 0:
+                        comp_dict[company] = indices
 
                 csv_writer.writerow([row['SOURCE_ID'], row['SENT_NUM'], row['SENTENCE'], drug_dict, comp_dict, tags])
 
@@ -260,6 +264,6 @@ def locate_entities():
 
 if __name__ == '__main__':
     #collate_texts()
-    #clean_and_tag_all()
-    #locate_entities()
-    stanford_entity_recognition()
+    clean_and_tag_all()
+    drug_and_company_entities()
+    #stanford_entity_recognition()
