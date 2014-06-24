@@ -1,7 +1,6 @@
 import nltk
 import csv          # for reading and writing CSV files
 import ast          # ast is needed to convert list from string to proper list
-import re           # regular expressions
 import os           # for filepath stuff
 import sys          # for displaying progress as ...
 

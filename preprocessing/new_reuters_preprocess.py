@@ -84,11 +84,10 @@ def clean_and_tag_all():
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, delimiter=',')
-
-            # write column headers on first row
-            csv_writer.writerow(['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'NO_PUNCT', 'DRUGS', 'COMPANIES', 'POS_TAGS'])
+            csv_reader = csv.DictReader(csv_in, ['SOURCE_ID', 'DRUGS', 'COMPANIES', 'SENTENCE'], delimiter=',')
+            csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'NO_PUNCT',
+                                                  'DRUGS', 'COMPANIES', 'POS_TAGS'], delimiter=',')
+            csv_writer.writeheader()
 
             for row in csv_reader:
                 # use stdout to avoid spaces and newlines
@@ -97,7 +96,7 @@ def clean_and_tag_all():
                 sys.stdout.flush()
 
                 # clean up html tags
-                plaintext = nltk.clean_html(row['FRAGMENT'])
+                plaintext = nltk.clean_html(row['SENTENCE'])
                 # this in particular seems to be screwing up some of the sentence splitting
                 plaintext = plaintext.replace('Inc .', 'Inc.')
                 # split into sentences
@@ -135,9 +134,75 @@ def clean_and_tag_all():
                         # ignore any rogue bits of punctuation etc
                         if len(tags) > 1:
                             # write row to file for each sentence
-                            csv_writer.writerow([row['SOURCE_ID'], i, s, no_punct, row['DRUGS'], row['COMPANIES'], tags])
+                            new_fields = {'SENT_NUM': i, 'SENTENCE': s, 'NO_PUNCT': no_punct, 'POS_TAGS': tags}
+                            row.update(new_fields)
+                            csv_writer.writerow(row)
 
     print 'Written to sentences_POS.csv'
+
+
+def drug_and_company_entities():
+    """
+    Locate named drugs and companies, indexed by word
+    """
+
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES',
+                                                  'POS_TAGS'], delimiter=',')
+            csv_writer.writeheader()
+
+            for row in csv_reader:
+                drug_dict = {}
+                comp_dict = {}
+                tags = eval(row['POS_TAGS'])
+
+                for drug in eval(row['DRUGS']):
+                    # locate first word if entity is made of multiple words
+                    space = drug.find(' ')
+                    if space > 0:
+                        head_word = drug[:space]
+                    else:
+                        head_word = drug
+                    # underscores are used in the tokens so need to replace before searching
+                    if head_word.find('-') > 0:
+                        head_word = head_word.replace('-', '_')
+
+                    # add indices of head word to dict entry for this drug
+                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    if len(indices) > 0:
+                        drug_dict[drug] = indices
+
+                row.update({'DRUGS': drug_dict})
+
+                for company in eval(row['COMPANIES']):
+                    # locate first word if entity is made of multiple words
+                    space = company.find(' ')
+                    if space > 0:
+                        head_word = company[:space]
+                    else:
+                        head_word = company
+
+                    if head_word.find('-') > 0:
+                        head_word = head_word.replace('-', '_')
+
+                    # add indices of head word to dict entry for this drug
+                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    if len(indices) > 0:
+                        comp_dict[company] = indices
+
+                row.update({'COMPANIES': comp_dict})
+                row.pop('NO_PUNCT')
+
+                csv_writer.writerow(row)
+
+    print 'Written to entities_marked.csv'
 
 
 def stanford_entity_recognition():
@@ -203,67 +268,8 @@ def nltk_entity_recognition():
                 # row['POS_TAGS'], ne_chunks])
 
 
-def drug_and_company_entities():
-    """
-    Locate named drugs and companies, indexed by word
-    """
-    # set filepath to input
-    basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
-
-    with open(file_in, 'rb') as csv_in:
-        with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, delimiter=',')
-
-            # write headers
-            csv_writer.writerow(['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS'])
-
-            for row in csv_reader:
-                drug_dict = {}
-                comp_dict = {}
-                tags = eval(row['POS_TAGS'])
-
-                for drug in eval(row['DRUGS']):
-                    # locate first word if entity is made of multiple words
-                    space = drug.find(' ')
-                    if space > 0:
-                        head_word = drug[:space]
-                    else:
-                        head_word = drug
-                    # underscores are used in the tokens so need to replace before searching
-                    if head_word.find('-') > 0:
-                        head_word = head_word.replace('-', '_')
-
-                    # add indices of head word to dict entry for this drug
-                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-                    if len(indices) > 0:
-                        drug_dict[drug] = indices
-
-                for company in eval(row['COMPANIES']):
-                    # locate first word if entity is made of multiple words
-                    space = company.find(' ')
-                    if space > 0:
-                        head_word = company[:space]
-                    else:
-                        head_word = company
-
-                    if head_word.find('-') > 0:
-                        head_word = head_word.replace('-', '_')
-
-                    # add indices of head word to dict entry for this drug
-                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-                    if len(indices) > 0:
-                        comp_dict[company] = indices
-
-                csv_writer.writerow([row['SOURCE_ID'], row['SENT_NUM'], row['SENTENCE'], drug_dict, comp_dict, tags])
-
-    print 'Written to entities_marked.csv'
-
-
 if __name__ == '__main__':
     #collate_texts()
-    clean_and_tag_all()
+    #clean_and_tag_all()
     drug_and_company_entities()
     #stanford_entity_recognition()

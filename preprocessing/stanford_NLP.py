@@ -86,6 +86,7 @@ def other_entities():
     """
     Locate named entities tagged by Stanford NER tool
     """
+
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
@@ -94,10 +95,9 @@ def other_entities():
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, delimiter=',')
-
-            # write headers
-            csv_writer.writerow(['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'OTHER', 'POS_TAGS'])
+            csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'OTHER',
+                                                  'POS_TAGS'], delimiter=',')
+            csv_writer.writeheader()
 
             for row in csv_reader:
                 # extract tagged entities from preprocessed file
@@ -123,11 +123,12 @@ def other_entities():
 
                     indices = [i for i, x in enumerate(tags) if x[0] == head_word]
                     # only add to other entities if it doesn't match an existing drug or company
-                    if len(indices) > 0 and indices not in drug_dict.values() and indices not in comp_dict.values():
+                    #if len(indices) > 0 and indices not in drug_dict.values() and indices not in comp_dict.values():
+                    if len(indices) > 0 and indices not in (drug_dict.values() + comp_dict.values()):
                         entities_dict[entity] = indices
 
-                csv_writer.writerow([row['SOURCE_ID'], row['SENT_NUM'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
-                                     entities_dict, tags])
+                row.update({'OTHER': entities_dict})
+                csv_writer.writerow(row)
 
     print 'Written to all_entities_marked.csv'
 
