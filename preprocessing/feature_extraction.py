@@ -85,7 +85,7 @@ def generate_attributes():
                     #print 'closest pair', pairs[distance.index(min(distance))]
 
                     # add feature vector for this pair
-                    feature_vectors.append([row['SENT_NUM'], min(distance), 1])
+                    feature_vectors.append([row['SENT_NUM'], min(distance), 'yes'])
 
     return feature_vectors
 
@@ -119,7 +119,7 @@ def generate_attributes_no_relation():
                         #print 'closest pair', pairs[distance.index(min(distance))]
 
                         # add feature vector for this pair
-                        feature_vectors.append([row['SENT_NUM'], min(distance), 0])
+                        feature_vectors.append([row['SENT_NUM'], min(distance), 'no'])
 
     return feature_vectors
 

@@ -18,7 +18,7 @@ def create_arff(filepath, relation, attributes):
         # now add attributes and their types
         for [att, att_type] in attributes:
             f.write('@ATTRIBUTE ' + att + ' ' + att_type + '\n')
-        f.write('\n')
+        f.write('\n@DATA\n')
 
 
 def add_arff_data(filepath, data):
@@ -27,8 +27,7 @@ def add_arff_data(filepath, data):
     """
 
     with open(filepath, 'a') as f:
-        # add data section
-        f.write('@DATA\n')
+        # add data to data section
         for vector in data:
             vector = [str(v) for v in vector]
             f.write(', '.join(vector) + '\n')
@@ -38,8 +37,8 @@ def test():
     basepath = os.path.dirname(__file__)
     file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/WEKA/test.arff'))
 
-    create_arff(file_out, 'drug_company', [['SENT_NUM', 'NUMERIC'], ['WORD_GAP', 'NUMERIC'],
-                                           ['RELATED', 'NUMERIC']])
+    create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'],
+                                           ['related', '{yes, no}']])
 
     data = feature_extraction.generate_attributes()
     add_arff_data(file_out, data)
