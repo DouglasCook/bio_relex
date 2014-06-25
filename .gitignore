@@ -6,3 +6,5 @@
 .idea/
 *.txt
 *.xsL
+*.ods
+*.arff

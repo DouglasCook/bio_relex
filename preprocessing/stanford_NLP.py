@@ -110,20 +110,22 @@ def other_entities():
                 tags = eval(row['POS_TAGS'])
 
                 for entity in entities:
-                    # locate first word if entity is made of multiple words
-                    # TODO this method does not work well in this situtation end up with loads of duplicate indices
-                    space = entity.find(' ')
-                    if space > 0:
-                        head_word = entity[:space]
-                    else:
-                        head_word = entity
                     # underscores are used in the tokens so need to replace before searching
-                    if head_word.find('-') > 0:
-                        head_word = head_word.replace('-', '_')
+                    if entity.find('-') > 0:
+                        entity = entity.replace('-', '_')
 
-                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+                    words = entity.split()
+                    tokens = [tok for (tok, tag) in tags]
+                    indices = []
+
+                    # search for whole entity in tokens
+                    for i in range(len(tokens)):
+                        if tokens[i:i+len(words)] == words:
+                            indices.append(i)
+
                     # only add to other entities if it doesn't match an existing drug or company
                     #if len(indices) > 0 and indices not in drug_dict.values() and indices not in comp_dict.values():
+                    # is the line below correct? adding two lists right?
                     if len(indices) > 0 and indices not in (drug_dict.values() + comp_dict.values()):
                         entities_dict[entity] = indices
 

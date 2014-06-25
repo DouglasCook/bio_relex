@@ -1,20 +1,33 @@
-def create_arff(filepath, relation, attributes, data):
+import os
+
+import feature_extraction
+
+
+def create_arff(filepath, relation, attributes):
     """
     Create arff file for use in WEKA, don't worry about comments or anything for now
     Requires lists of lists for attributes and data
+    Dictionary seems like it could be useful to use here but has no order so maybe better to stick with list?
     """
 
     with open(filepath, 'w') as f:
         # create relation title
         f.write('@RELATION ' + relation)
-        f.write('\n'*2)
+        f.write('\n' * 2)
 
         # now add attributes and their types
         for [att, att_type] in attributes:
             f.write('@ATTRIBUTE ' + att + ' ' + att_type + '\n')
         f.write('\n')
 
-        # finally add data section
+
+def add_arff_data(filepath, data):
+    """
+    Add data to given arff file
+    """
+
+    with open(filepath, 'a') as f:
+        # add data section
         f.write('@DATA\n')
         for vector in data:
             vector = [str(v) for v in vector]
@@ -22,10 +35,17 @@ def create_arff(filepath, relation, attributes, data):
 
 
 def test():
-    with open('test.txt', 'w') as f:
-        f.write('a' + 'b' + 'c')
-        f.write('\n'*2)
-        f.write('newline?')
+    basepath = os.path.dirname(__file__)
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/WEKA/test.arff'))
+
+    create_arff(file_out, 'drug_company', [['SENT_NUM', 'NUMERIC'], ['WORD_GAP', 'NUMERIC'],
+                                           ['RELATED', 'NUMERIC']])
+
+    data = feature_extraction.generate_attributes()
+    add_arff_data(file_out, data)
+    data = feature_extraction.generate_attributes_no_relation()
+    add_arff_data(file_out, data)
+
 
 if __name__ == '__main__':
-    create_arff('test.arff', 'testing the water', [['test1', 'STRING'],['test2', 'NUMERIC']], [['testing', 2],['no', 3]])
+    test()

@@ -159,50 +159,48 @@ def drug_and_company_entities():
             csv_writer.writeheader()
 
             for row in csv_reader:
-                drug_dict = {}
-                comp_dict = {}
                 tags = eval(row['POS_TAGS'])
-
-                for drug in eval(row['DRUGS']):
-                    # locate first word if entity is made of multiple words
-                    space = drug.find(' ')
-                    if space > 0:
-                        head_word = drug[:space]
-                    else:
-                        head_word = drug
-                    # underscores are used in the tokens so need to replace before searching
-                    if head_word.find('-') > 0:
-                        head_word = head_word.replace('-', '_')
-
-                    # add indices of head word to dict entry for this drug
-                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-                    if len(indices) > 0:
-                        drug_dict[drug] = indices
-
+                # find indices for drugs and companies mentioned in the row
+                drug_dict = entity_indices(eval(row['DRUGS']), tags)
+                comp_dict = entity_indices(eval(row['COMPANIES']), tags)
                 row.update({'DRUGS': drug_dict})
-
-                for company in eval(row['COMPANIES']):
-                    # locate first word if entity is made of multiple words
-                    space = company.find(' ')
-                    if space > 0:
-                        head_word = company[:space]
-                    else:
-                        head_word = company
-
-                    if head_word.find('-') > 0:
-                        head_word = head_word.replace('-', '_')
-
-                    # add indices of head word to dict entry for this drug
-                    indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-                    if len(indices) > 0:
-                        comp_dict[company] = indices
-
                 row.update({'COMPANIES': comp_dict})
-                row.pop('NO_PUNCT')
 
+                # remove this field, think pop is the only way to do it
+                row.pop('NO_PUNCT')
                 csv_writer.writerow(row)
 
     print 'Written to entities_marked.csv'
+
+
+def entity_indices(entities, tags):
+    """
+    Given entities return indices in tags where their first words are found
+    Return dictionary with entities as keys and indices as values
+    """
+
+    entity_dict = {}
+
+    for entity in entities:
+        # TODO fix this method, sometimes first word makes sense but sometimes identifies incorrect entities
+        # locate first word if entity is made of multiple words
+        space = entity.find(' ')
+        if space > 0:
+            head_word = entity[:space]
+        else:
+            head_word = entity
+        # underscores are used in the tokens so need to replace before searching
+        if head_word.find('-') > 0:
+            head_word = head_word.replace('-', '_')
+
+        # add indices of head word to dict entry for this drug
+        # TODO does casting everything as lower case give correct results?
+        #indices = [i for i, x in enumerate(tags) if x[0].lower() == head_word.lower()]
+        indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+        if len(indices) > 0:
+            entity_dict[entity] = indices
+
+    return entity_dict
 
 
 def stanford_entity_recognition():
