@@ -37,8 +37,8 @@ def test():
     basepath = os.path.dirname(__file__)
     file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/WEKA/test.arff'))
 
-    create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'],
-                                           ['related', '{yes, no}']])
+    create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'], ['words', 'STRING'],
+                                           ['pos_tags', 'STRING'], ['true_relation', '{yes, no}']])
 
     data = feature_extraction.generate_attributes()
     add_arff_data(file_out, data)

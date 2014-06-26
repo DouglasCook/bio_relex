@@ -56,6 +56,48 @@ def single_sentence_non_relations():
     print 'Written to single_sentence_non_relations.csv'
 
 
+def get_tags_between(all_tags, start, finish, element):
+    """
+    Return string for all elements in tags between start and finish
+    """
+    tags = all_tags[start + 1:finish]
+    # can put everything in lowercase in weka, probably better to do it there
+    #return '"' + ' '.join([tag[element].lower() for tag in tags]) + '"'
+    return '"' + ' '.join([tag[element].lower() for tag in tags]) + '"'
+
+
+def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
+    """
+    Generate feature vector for given entity pair
+    Return None if the entity pair should not have been selected, if one is prefix of the other
+    """
+    # create feature vector with first attribute
+    f_vector = [sent_num]
+
+    # generate all pairs of indices
+    pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
+    # find closest pair, assuming these will have the relation between them
+    distance = [abs(x - y) for (x, y) in pairs]
+    min_dist = min(distance)
+
+    # this is a hacky way to deal with one entity whose prefix is a 'different' entity
+    # TODO consider the min of those non-zero values instead?
+    if min_dist == 0:
+        return None
+
+    # append word gap to feature vector
+    f_vector.append(min_dist)
+
+    # extract words and POS tags between the closest pair to use for bag of words features
+    closest_pair = sorted(pairs[distance.index(min_dist)])
+    words = get_tags_between(tags, closest_pair[0], closest_pair[1], 0)
+    pos_tags = get_tags_between(tags, closest_pair[0], closest_pair[1], 1)
+    # append to feature vector
+    f_vector.extend([words, pos_tags])
+
+    return f_vector
+
+
 def generate_attributes():
     """
     Create list of feature vectors for given entity pairs
@@ -73,19 +115,16 @@ def generate_attributes():
         for row in csv_reader:
             drug_dict = eval(row['DRUGS'])
             comp_dict = eval(row['COMPANIES'])
+            tags = eval(row['POS_TAGS'])
 
             # consider all drug-company pairs
             for drug in drug_dict.keys():
                 for comp in comp_dict.keys():
+                    f_vector = generate_feature_vector(tags, row['SENT_NUM'], drug_dict, comp_dict, drug, comp)
 
-                    # generate all pairs of indices
-                    pairs = [(x, y) for x in drug_dict[drug] for y in comp_dict[comp]]
-                    distance = [abs(x - y) for (x, y) in pairs]
-                    #print 'nearest index', distance.index(min(distance))
-                    #print 'closest pair', pairs[distance.index(min(distance))]
-
-                    # add feature vector for this pair
-                    feature_vectors.append([row['SENT_NUM'], min(distance), 'yes'])
+                    if f_vector is not None:
+                        f_vector.append('yes')
+                        feature_vectors.append(f_vector)
 
     return feature_vectors
 
@@ -106,20 +145,18 @@ def generate_attributes_no_relation():
 
         for row in csv_reader:
             other_dict = eval(row['OTHER'])
+            tags = eval(row['POS_TAGS'])
 
-            # consider all pairs of entities - this is a crap way to do it
-            for e1 in other_dict.keys():
-                for e2 in other_dict.keys():
+            # need to use range loops here since want unique pairs from the lists
+            for i in xrange(len(other_dict.keys())):
+                for j in xrange(i, len(other_dict.keys())):
 
-                    if e1 != e2:
-                        # generate all pairs of indices
-                        pairs = [(x, y) for x in other_dict[e1] for y in other_dict[e2]]
-                        distance = [abs(x - y) for (x, y) in pairs]
-                        #print 'nearest index', distance.index(min(distance))
-                        #print 'closest pair', pairs[distance.index(min(distance))]
+                    e1, e2 = other_dict.keys()[i], other_dict.keys()[j]
+                    f_vector = generate_feature_vector(tags, row['SENT_NUM'], other_dict, other_dict, e1, e2)
 
-                        # add feature vector for this pair
-                        feature_vectors.append([row['SENT_NUM'], min(distance), 'no'])
+                    if f_vector is not None:
+                        f_vector.append('no')
+                        feature_vectors.append(f_vector)
 
     return feature_vectors
 
