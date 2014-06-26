@@ -9,8 +9,8 @@ def single_sentence_relations():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/all_entities_marked.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_sentence_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/all_entities_marked.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_relations.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -36,8 +36,8 @@ def single_sentence_non_relations():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/all_entities_marked.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_sentence_non_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/all_entities_marked.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_non_relations.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -105,7 +105,7 @@ def generate_attributes():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_sentence_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_relations.csv'))
 
     feature_vectors = []
 
@@ -136,7 +136,7 @@ def generate_attributes_no_relation():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_sentence_non_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_non_relations.csv'))
 
     feature_vectors = []
 
@@ -162,6 +162,7 @@ def generate_attributes_no_relation():
 
 
 if __name__ == '__main__':
-    #single_sentence_non_relations()
-    #generate_attributes()
+    single_sentence_relations()
+    single_sentence_non_relations()
+    generate_attributes()
     generate_attributes_no_relation()

@@ -35,7 +35,7 @@ def add_arff_data(filepath, data):
 
 def test():
     basepath = os.path.dirname(__file__)
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/WEKA/test.arff'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/WEKA/test_no_org.arff'))
 
     create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'], ['words', 'STRING'],
                                            ['pos_tags', 'STRING'], ['true_relation', '{yes, no}']])

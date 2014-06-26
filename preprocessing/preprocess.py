@@ -4,8 +4,6 @@ import os.path  # need this to use relative filepaths
 import sys  # using sys for std out
 import re
 
-import preprocessing
-
 import nltk.tokenize.punkt as punkt
 
 
@@ -19,7 +17,7 @@ def collate_texts():
     basepath = os.path.dirname(__file__)
     file_in = 'data/reuters/press_releases/PR_drug_company_500.csv'
     file_in = os.path.abspath(os.path.join(basepath, '..', '..', file_in))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_records_clean.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records_clean.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -70,8 +68,8 @@ def clean_and_tag_all():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/single_records.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
 
     # set up sentence splitter with custom parameters
     punkt_params = punkt.PunktParameters()
@@ -130,7 +128,7 @@ def clean_and_tag_all():
                         # put the hyphens back after tokenisation so tokens turn out better
                         no_punct = no_punct.replace('_', '-')
 
-                        # TODO parse tree info, something to do with stemming?
+                        # TODO parse tree info, chunking, something to do with stemming?
                         # ignore any rogue bits of punctuation etc
                         if len(tags) > 1:
                             # write row to file for each sentence
@@ -141,68 +139,6 @@ def clean_and_tag_all():
     print 'Written to sentences_POS.csv'
 
 
-def drug_and_company_entities():
-    """
-    Locate named drugs and companies, indexed by word
-    """
-
-    # set filepath to input
-    basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/entities_marked.csv'))
-
-    with open(file_in, 'rb') as csv_in:
-        with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES',
-                                                  'POS_TAGS'], delimiter=',')
-            csv_writer.writeheader()
-
-            for row in csv_reader:
-                tags = eval(row['POS_TAGS'])
-                # find indices for drugs and companies mentioned in the row
-                drug_dict = entity_indices(eval(row['DRUGS']), tags)
-                comp_dict = entity_indices(eval(row['COMPANIES']), tags)
-                row.update({'DRUGS': drug_dict})
-                row.update({'COMPANIES': comp_dict})
-
-                # remove this field, think pop is the only way to do it
-                row.pop('NO_PUNCT')
-                csv_writer.writerow(row)
-
-    print 'Written to entities_marked.csv'
-
-
-def entity_indices(entities, tags):
-    """
-    Given entities return indices in tags where their first words are found
-    Return dictionary with entities as keys and indices as values
-    """
-
-    entity_dict = {}
-
-    for entity in entities:
-        # TODO fix this method, sometimes first word makes sense but sometimes identifies incorrect entities
-        # locate first word if entity is made of multiple words
-        space = entity.find(' ')
-        if space > 0:
-            head_word = entity[:space]
-        else:
-            head_word = entity
-        # underscores are used in the tokens so need to replace before searching
-        if head_word.find('-') > 0:
-            head_word = head_word.replace('-', '_')
-
-        # add indices of head word to dict entry for this drug
-        # TODO does casting everything as lower case give correct results?
-        #indices = [i for i, x in enumerate(tags) if x[0].lower() == head_word.lower()]
-        indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-        if len(indices) > 0:
-            entity_dict[entity] = indices
-
-    return entity_dict
-
-
 def stanford_entity_recognition():
     """
     Produce NE chunks from POS tags - this uses the Stanford tagger implementation
@@ -211,8 +147,8 @@ def stanford_entity_recognition():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_NE.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_NE.csv'))
 
     # set up tagger
     st = nltk.tag.stanford.NERTagger(
@@ -243,8 +179,8 @@ def nltk_entity_recognition():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters_new/sentences_NE.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_NE.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -268,6 +204,5 @@ def nltk_entity_recognition():
 
 if __name__ == '__main__':
     #collate_texts()
-    #clean_and_tag_all()
-    drug_and_company_entities()
+    clean_and_tag_all()
     #stanford_entity_recognition()
