@@ -74,12 +74,8 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     # create feature vector with first attribute
     f_vector = [sent_num]
 
-    # generate all pairs of indices
+    # generate all pairs of indices, first need to unzip the dictionary values to only consider the indices
     pairs = [(x, y) for x in zip(*dict1[e1])[0] for y in zip(*dict2[e2])[0]]
-
-    # take indices from dict (other value is length of entity)
-    # TODO is this causing my problems???? LOOKHERE
-    #pairs = zip(*pairs)[0]
 
     # find closest pair, assuming these will have the relation between them
     distance = [abs(x - y) for (x, y) in pairs]
