@@ -1,6 +1,7 @@
 import os
 import csv
 import re
+import itertools        # this is used to loop over elements of consecutive lists
 
 
 def entity_indices(entities, tags):
@@ -10,30 +11,80 @@ def entity_indices(entities, tags):
     """
 
     entity_dict = {}
-
     for entity in entities:
         # TODO fix this method, sometimes first word makes sense but sometimes identifies incorrect entities
         # locate first word if entity is made of multiple words
-        space = entity.find(' ')
-        if space > 0:
-            head_word = entity[:space]
-        else:
-            head_word = entity
+        words = entity.split()
+        head_word = words[0]
         # underscores are used in the tokens so need to replace before searching
-        if head_word.find('-') > 0:
-            head_word = head_word.replace('-', '_')
+        head_word = head_word.replace('-', '_')
+        tokens = [tok for (tok, tag) in tags]
 
-        # add indices of head word to dict entry for this drug
+        # generate list off indices for all occurrences of this entity
+        indices = [i for i, x in enumerate(tags) if x[0] == head_word]
         # TODO does casting everything as lower case give correct results?
         #indices = [i for i, x in enumerate(tags) if x[0].lower() == head_word.lower()]
-        indices = [i for i, x in enumerate(tags) if x[0] == head_word]
-        if len(indices) > 0:
-            entity_dict[entity] = indices
+
+        # also want to calculate length of word
+        lengths = []
+        for i in indices:
+            lengths.append([i, 1])
+            # if entity is a single word need to deal with it here before the j loop
+            if len(words) == 1:
+                lengths.append([i, 1])
+            # otherwise calculate length of the word with this horrible loop...
+            else:
+                for j in xrange(1, len(words)):
+                    # if we have reached end of text need to avoid index out of range
+                    if i + j >= len(tokens):
+                        lengths.append([i, max(j - 1, 1)])
+                        break
+                    # if the next word doesn't match
+                    if tokens[i + j] != words[j]:
+                        lengths.append([i, j])
+                        break
+
+        if len(lengths) > 0:
+            entity_dict[entity] = lengths
 
     return entity_dict
 
 
-def entities_only(filename):
+def other_entity_indices(entities, drug_dict, comp_dict, tags):
+#def other_entity_indices(entities, tags):
+    """
+    Given entities return indices in tags where their first words are found
+    Return dictionary with entities as keys and indices as values
+    """
+
+    entity_dict = {}
+    for entity in entities:
+        # underscores are used in the tokens so need to replace before searching
+        entity = entity.replace('-', '_')
+        words = entity.split()
+        # want to record length of entity as well as index
+        e_length = len(words)
+        tokens = [tok for (tok, tag) in tags]
+        indices = []
+
+        # search for whole entity in tokens
+        for i in xrange(len(tokens)):
+            if tokens[i:i+len(words)] == words:
+                indices.append([i, e_length])
+
+        # TODO this seems to be working but not completely solid
+        if len(indices) > 0:
+            # the chain creates an iterable by iterating over all iterable arguments (in this case the lists)
+            d_chain = itertools.chain(*drug_dict.values())
+            c_chain = itertools.chain(*comp_dict.values())
+            # if the entity doesn't share an index with drug or company add it
+            if indices[0] not in list(d_chain) and indices[0] not in list(c_chain):
+                entity_dict[entity] = indices
+
+    return entity_dict
+
+
+def entities_only(filename, no_orgs):
     """
     Extract all named entities from the given text file
     """
@@ -41,9 +92,12 @@ def entities_only(filename):
     with open(filename, 'r') as f_in:
         text = f_in.read()
         # regex to match words within tags
-        #entities = re.findall('<.{,12}>.+?</', text)
-        # below will not match any organisations, may be better for now for generating false examples
-        entities = re.findall('<.{,8}>.+?</', text)
+        if no_orgs:
+            # below will not match any organisations, may be better for now for generating false examples
+            entities = re.findall('<.{,8}>.+?</', text)
+        else:
+            entities = re.findall('<.{,12}>.+?</', text)
+
         # strip tags and remove duplicates
         entities = set([x[x.find('>')+1:x.rfind('<')] for x in entities])
 
@@ -82,10 +136,12 @@ def drug_and_company_entities():
     print 'Written to entities_marked.csv'
 
 
-def other_entities():
+def other_entities(no_orgs):
     """
     Locate named entities tagged by Stanford NER tool
     Text file must be created via bash script for now, really not a good way to do it
+
+    If no_orgs is True then no organisations will be considered for the 'other' entities
     """
 
     # set filepath to input
@@ -103,38 +159,28 @@ def other_entities():
             for row in csv_reader:
                 # extract tagged entities from preprocessed file
                 ne_filepath = os.path.abspath(os.path.join(basepath, '..', 'reuters/named_entities'))
-                entities = entities_only(ne_filepath + '/' + row['SOURCE_ID'] + '.txt')
+                entities = entities_only(ne_filepath + '/' + row['SOURCE_ID'] + '.txt', no_orgs)
 
-                entities_dict = {}
-                drug_dict = eval(row['DRUGS'])
-                comp_dict = eval(row['COMPANIES'])
-                tags = eval(row['POS_TAGS'])
+                #entities_dict = other_entity_indices(entities, eval(row['POS_TAGS']))
+                entities_dict = other_entity_indices(entities, eval(row['DRUGS']), eval(row['COMPANIES']),
+                                                     eval(row['POS_TAGS']))
 
-                for entity in entities:
-                    # underscores are used in the tokens so need to replace before searching
-                    if entity.find('-') > 0:
-                        entity = entity.replace('-', '_')
-
-                    words = entity.split()
-                    tokens = [tok for (tok, tag) in tags]
-                    indices = []
-
-                    # search for whole entity in tokens
-                    for i in range(len(tokens)):
-                        if tokens[i:i+len(words)] == words:
-                            indices.append(i)
-
-                    # only add to other entities if it doesn't match an existing drug or company
-                    #if len(indices) > 0 and indices not in drug_dict.values() and indices not in comp_dict.values():
-                    # is the line below correct? adding two lists right?
-                    if len(indices) > 0 and indices not in (drug_dict.values() + comp_dict.values()):
-                        entities_dict[entity] = indices
-
+                # add other dict to record and write to file
                 row.update({'OTHER': entities_dict})
                 csv_writer.writerow(row)
 
     print 'Written to all_entities_marked.csv'
 
+
+def extract_all_entities(no_orgs):
+    """
+    Step 2 in the pipeline so far...
+    Locate all named entities within the sentences (this is reliant on bash script having run first)
+    """
+    drug_and_company_entities()
+    other_entities(no_orgs)
+
+
 if __name__ == '__main__':
-    other_entities()
+    extract_all_entities(True)
     #stanford_input_split_sentences()

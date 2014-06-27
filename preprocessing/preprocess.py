@@ -33,8 +33,8 @@ def collate_texts():
 
             # think that the dict reader skips header row automagically
             for row in csv_reader:
-                if row['SOURCE_ID'] != src:
 
+                if row['SOURCE_ID'] != src:
                     # first check if the text contains at least on of each drug and company tagged
                     d_relevant = False
                     c_relevant = False
@@ -62,9 +62,13 @@ def collate_texts():
                 src = row['SOURCE_ID']
                 text = row['FRAGMENT']
 
+    print 'Written to single_records_clean.csv'
+
 
 def clean_and_tag_all():
-    """ Create new CSV containing tagged versions of all sentences """
+    """
+    Create new CSV containing tagged versions of all sentences
+    """
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
@@ -88,9 +92,8 @@ def clean_and_tag_all():
             csv_writer.writeheader()
 
             for row in csv_reader:
-                # use stdout to avoid spaces and newlines
+                # display progress bar
                 sys.stdout.write('.')
-                # need to flush the buffer to display immediately
                 sys.stdout.flush()
 
                 # clean up html tags
@@ -103,11 +106,7 @@ def clean_and_tag_all():
                 if len(sentences) > 0:
                     for i, s in enumerate(sentences):
 
-                        # need to do the NE recognition before removing punctuation
-                        # TODO integrate stanford output into this
-                        # tokens = nltk.word_tokenize(s)
-                        # tags = nltk.pos_tag(tokens)
-                        #ne_chunks = nltk.ne_chunk(tags, binary=True)
+                        # TODO integrate stanford NER recognition output into this
 
                         # want to keep hyphenated words but none of the other hyphens
                         # replace any hyphenated words' hyphens with underscores
@@ -202,7 +201,15 @@ def nltk_entity_recognition():
                 # row['POS_TAGS'], ne_chunks])
 
 
-if __name__ == '__main__':
-    #collate_texts()
+def preprocessing():
+    """
+    Step 1 in the pipeline so far...
+    Retrieve and clean relevant texts from CSV and carry out POS tagging
+    """
+    collate_texts()
     clean_and_tag_all()
+
+
+if __name__ == '__main__':
+    preprocessing()
     #stanford_entity_recognition()
