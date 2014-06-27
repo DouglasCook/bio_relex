@@ -33,18 +33,22 @@ def add_arff_data(filepath, data):
             f.write(', '.join(vector) + '\n')
 
 
-def test():
+def write_file(file_name):
+    """
+    Step 4 in the pipeline so far...
+    Write the weka file
+    """
+    # want to be able to save to different files easily
     basepath = os.path.dirname(__file__)
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/WEKA/test_no_org.arff'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/WEKA/' + file_name + '.arff'))
 
+    # write the header stuff
     create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'], ['words', 'STRING'],
                                            ['pos_tags', 'STRING'], ['true_relation', '{yes, no}']])
-
-    data = feature_extraction.generate_attributes()
-    add_arff_data(file_out, data)
-    data = feature_extraction.generate_attributes_no_relation()
-    add_arff_data(file_out, data)
+    # add the data
+    add_arff_data(file_out, feature_extraction.generate_true_set())
+    add_arff_data(file_out, feature_extraction.generate_false_set())
 
 
 if __name__ == '__main__':
-    test()
+    write_file()

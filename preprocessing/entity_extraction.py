@@ -136,5 +136,6 @@ def other_entities():
     print 'Written to all_entities_marked.csv'
 
 if __name__ == '__main__':
+    drug_and_company_entities()
     other_entities()
     #stanford_input_split_sentences()

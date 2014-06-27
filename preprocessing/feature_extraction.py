@@ -76,6 +76,11 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
 
     # generate all pairs of indices
     pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
+
+    # take indices from dict (other value is length of entity)
+    # TODO is this causing my problems???? LOOKHERE
+    pairs = zip(*pairs)[0]
+
     # find closest pair, assuming these will have the relation between them
     distance = [abs(x - y) for (x, y) in pairs]
     min_dist = min(distance)
@@ -98,7 +103,7 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     return f_vector
 
 
-def generate_attributes():
+def generate_true_set():
     """
     Create list of feature vectors for given entity pairs
     """
@@ -129,7 +134,7 @@ def generate_attributes():
     return feature_vectors
 
 
-def generate_attributes_no_relation():
+def generate_false_set():
     """
     Create list of feature vectors for given entity pairs, these are the non-related for now
     """
@@ -161,8 +166,16 @@ def generate_attributes_no_relation():
     return feature_vectors
 
 
-if __name__ == '__main__':
+def generate_feature_vectors():
+    """
+    Step 3 in the pipeline so far...
+    Find entity pairs for true and false examples and create feature vectors
+    """
     single_sentence_relations()
     single_sentence_non_relations()
-    generate_attributes()
-    generate_attributes_no_relation()
+    generate_true_set()
+    generate_false_set()
+
+
+if __name__ == '__main__':
+    generate_feature_vectors()
