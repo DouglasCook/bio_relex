@@ -77,6 +77,7 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     # generate all pairs of indices, first need to unzip the dictionary values to only consider the indices
     pairs = [(x, y) for x in zip(*dict1[e1])[0] for y in zip(*dict2[e2])[0]]
 
+    # TODO need to validate this assumption
     # find closest pair, assuming these will have the relation between them
     distance = [abs(x - y) for (x, y) in pairs]
     min_dist = min(distance)

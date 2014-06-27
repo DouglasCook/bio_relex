@@ -27,7 +27,7 @@ def clean_and_tag():
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
-            # TODO use dictionary reader to avoid using magic numbers for columns
+            # TO DO use dictionary reader to avoid using magic numbers for columns
             csv_reader = csv.reader(csv_in, delimiter=',')
             csv_writer = csv.writer(csv_out, delimiter=',')
 
@@ -53,7 +53,7 @@ def clean_and_tag():
                     sentences = sentence_splitter.tokenize(plaintext)
 
                     # filter for only sentences mentioning drug, company or both
-                    # TODO coreference resolution to find more relevant sentences
+                    # TO DO coreference resolution to find more relevant sentences
                     sentences = [s for s in sentences if drug in s or company in s]
 
                     if len(sentences) > 0:
@@ -64,7 +64,7 @@ def clean_and_tag():
                             tokens = nltk.word_tokenize(no_punct)
                             tags = nltk.pos_tag(tokens)
 
-                            # TODO parse tree info, something to do with stemming?
+                            # TO DO parse tree info, something to do with stemming?
                             # write row to file for each sentence
                             row.append(tags)
                             csv_writer.writerow([src, s, row[2], drug, row[4], company, tags])

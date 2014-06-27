@@ -109,7 +109,7 @@ def feature_extraction():
         diseases = eval(row[3])
         treatments = eval(row[4])
 
-        # TODO fix this or throw it away
+        # fix this or throw it away!
         for dis in diseases:
             print dis, words.index(dis.replace(' ', '_'))
         # create feature vector for each row
