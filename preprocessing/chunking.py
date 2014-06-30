@@ -34,6 +34,7 @@ def set_up_chunker():
     """
     Return trained chunker
     """
+    # other option is the treebank chunk corpus
     train_sents = nltk.corpus.conll2000.chunked_sents('train.txt')
     return BigramChunker(train_sents)
 

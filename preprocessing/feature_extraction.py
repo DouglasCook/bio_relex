@@ -6,7 +6,6 @@ def single_sentence_relations():
     """
     Extract all sentences containing both drug and company ie our easy true relations
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/all_entities_marked.csv'))
@@ -33,7 +32,6 @@ def single_sentence_non_relations():
     Extract all sentences containing two or more 'other' entities
     Problem going to arise when the entities have multiple names
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/all_entities_marked.csv'))
@@ -60,7 +58,6 @@ def get_tags_between(all_tags, start, finish, element):
     """
     Return string for all elements in tags between start and finish
     """
-
     tags = all_tags[start + 1:finish]
     # can put everything in lowercase in weka, probably better to do it there
     #return '"' + ' '.join([tag[element].lower() for tag in tags]) + '"'
@@ -72,7 +69,6 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     Generate feature vector for given entity pair
     Return None if the entity pair should not have been selected, if one is prefix of the other
     """
-
     # create feature vector with first attribute
     f_vector = [sent_num]
 
@@ -108,7 +104,6 @@ def generate_true_set():
     """
     Create list of feature vectors for given entity pairs
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_relations.csv'))
@@ -139,7 +134,6 @@ def generate_false_set():
     """
     Create list of feature vectors for given entity pairs, these are the non-related for now
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_non_relations.csv'))

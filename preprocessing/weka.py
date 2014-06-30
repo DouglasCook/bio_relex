@@ -9,7 +9,6 @@ def create_arff(filepath, relation, attributes):
     Requires lists of lists for attributes and data
     Dictionary seems like it could be useful to use here but has no order so maybe better to stick with list?
     """
-
     with open(filepath, 'w') as f:
         # create relation title
         f.write('@RELATION ' + relation)
@@ -25,7 +24,6 @@ def add_arff_data(filepath, data):
     """
     Add data to given arff file
     """
-
     with open(filepath, 'a') as f:
         # add data to data section
         for vector in data:

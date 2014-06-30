@@ -9,7 +9,6 @@ def entity_indices(entities, tags):
     Given entities return indices in tags where their first words are found
     Return dictionary with entities as keys and indices as values
     """
-
     entity_dict = {}
     for entity in entities:
         # TODO fix this method, sometimes first word makes sense but sometimes identifies incorrect entities
@@ -54,7 +53,6 @@ def other_entity_indices(entities, drug_dict, comp_dict, tags):
     Given entities return indices in tags where their first words are found
     Return dictionary with entities as keys and indices as values
     """
-
     entity_dict = {}
     for entity in entities:
         # underscores are used in the tokens so need to replace before searching
@@ -87,7 +85,6 @@ def entities_only(filename, no_orgs):
     """
     Extract all named entities from the given text file
     """
-
     with open(filename, 'r') as f_in:
         text = f_in.read()
         # regex to match words within tags
@@ -107,7 +104,6 @@ def drug_and_company_entities():
     """
     Locate named drugs and companies, indexed by word
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
@@ -117,18 +113,26 @@ def drug_and_company_entities():
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
             csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES',
-                                                  'POS_TAGS'], delimiter=',', extrasaction='ignore')
+                                                  'POS_TAGS', 'D_CHUNKS', 'C_CHUNKS', 'CHUNKS'],
+                                        delimiter=',', extrasaction='ignore')
             csv_writer.writeheader()
 
             for row in csv_reader:
-                tags = eval(row['POS_TAGS'])
+                drugs = eval(row['DRUGS'])
+                comps = eval(row['COMPANIES'])
                 # find indices for drugs and companies mentioned in the row
-                drug_dict = entity_indices(eval(row['DRUGS']), tags)
-                comp_dict = entity_indices(eval(row['COMPANIES']), tags)
-                row.update({'DRUGS': drug_dict})
-                row.update({'COMPANIES': comp_dict})
+                tags = eval(row['POS_TAGS'])
+                drug_dict = entity_indices(drugs, tags)
+                comp_dict = entity_indices(comps, tags)
+                row.update({'DRUGS': drug_dict, 'COMPANIES': comp_dict})
+                # do the same for chunk tags - tokens are different so need to redo it to get correct indices
+                chunks = eval(row['CHUNKS'])
+                drug_dict = entity_indices(drugs, chunks)
+                comp_dict = entity_indices(comps, chunks)
+                row.update({'D_CHUNKS': drug_dict, 'C_CHUNKS': comp_dict})
 
                 # remove this field, think pop is the only way to do it
+                # what do I actually need this for in the first place?
                 row.pop('NO_PUNCT')
                 csv_writer.writerow(row)
 
@@ -151,7 +155,8 @@ def other_entities(no_orgs):
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
             csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'OTHER',
-                                                  'POS_TAGS'], delimiter=',', extrasaction='ignore')
+                                                  'POS_TAGS', 'D_CHUNKS', 'C_CHUNKS', 'O_CHUNKS', 'CHUNKS'],
+                                        delimiter=',', extrasaction='ignore')
             csv_writer.writeheader()
 
             for row in csv_reader:
@@ -159,12 +164,16 @@ def other_entities(no_orgs):
                 ne_filepath = os.path.abspath(os.path.join(basepath, '..', 'reuters/named_entities'))
                 entities = entities_only(ne_filepath + '/' + row['SOURCE_ID'] + '.txt', no_orgs)
 
-                #entities_dict = other_entity_indices(entities, eval(row['POS_TAGS']))
+                # find entities in POS tags
                 entities_dict = other_entity_indices(entities, eval(row['DRUGS']), eval(row['COMPANIES']),
                                                      eval(row['POS_TAGS']))
-
-                # add other dict to record and write to file
                 row.update({'OTHER': entities_dict})
+
+                # find entities in chunk tags
+                entities_dict = other_entity_indices(entities, eval(row['D_CHUNKS']), eval(row['C_CHUNKS']),
+                                                     eval(row['CHUNKS']))
+                row.update({'O_CHUNKS': entities_dict})
+
                 csv_writer.writerow(row)
 
     print 'Written to entities_marked_all.csv'
