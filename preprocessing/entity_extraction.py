@@ -18,17 +18,16 @@ def entity_indices(entities, tags):
         head_word = words[0]
         # underscores are used in the tokens so need to replace before searching
         head_word = head_word.replace('-', '_')
-        tokens = [tok for (tok, tag) in tags]
+        tokens = [tag[0] for tag in tags]
 
         # generate list off indices for all occurrences of this entity
-        indices = [i for i, x in enumerate(tags) if x[0] == head_word]
+        indices = [i for i, x in enumerate(tokens) if x == head_word]
         # TODO does casting everything as lower case give correct results?
         #indices = [i for i, x in enumerate(tags) if x[0].lower() == head_word.lower()]
 
         # also want to calculate length of word
         lengths = []
         for i in indices:
-            lengths.append([i, 1])
             # if entity is a single word need to deal with it here before the j loop
             if len(words) == 1:
                 lengths.append([i, 1])
@@ -51,7 +50,6 @@ def entity_indices(entities, tags):
 
 
 def other_entity_indices(entities, drug_dict, comp_dict, tags):
-#def other_entity_indices(entities, tags):
     """
     Given entities return indices in tags where their first words are found
     Return dictionary with entities as keys and indices as values
@@ -64,7 +62,7 @@ def other_entity_indices(entities, drug_dict, comp_dict, tags):
         words = entity.split()
         # want to record length of entity as well as index
         e_length = len(words)
-        tokens = [tok for (tok, tag) in tags]
+        tokens = [tag[0] for tag in tags]
         indices = []
 
         # search for whole entity in tokens
@@ -75,10 +73,11 @@ def other_entity_indices(entities, drug_dict, comp_dict, tags):
         # TODO this seems to be working but not completely solid
         if len(indices) > 0:
             # the chain creates an iterable by iterating over all iterable arguments (in this case the lists)
-            d_chain = itertools.chain(*drug_dict.values())
-            c_chain = itertools.chain(*comp_dict.values())
+            # then need to extract the indices only
+            d_chain = [d[0] for d in itertools.chain(*drug_dict.values())]
+            c_chain = [c[0] for c in itertools.chain(*comp_dict.values())]
             # if the entity doesn't share an index with drug or company add it
-            if indices[0] not in list(d_chain) and indices[0] not in list(c_chain):
+            if indices[0][0] not in d_chain and indices[0][0] not in c_chain:
                 entity_dict[entity] = indices
 
     return entity_dict
@@ -118,7 +117,7 @@ def drug_and_company_entities():
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
             csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES',
-                                                  'POS_TAGS'], delimiter=',')
+                                                  'POS_TAGS'], delimiter=',', extrasaction='ignore')
             csv_writer.writeheader()
 
             for row in csv_reader:
@@ -143,17 +142,16 @@ def other_entities(no_orgs):
 
     If no_orgs is True then no organisations will be considered for the 'other' entities
     """
-
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/all_entities_marked.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked_all.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
             csv_writer = csv.DictWriter(csv_out, ['SOURCE_ID', 'SENT_NUM', 'SENTENCE', 'DRUGS', 'COMPANIES', 'OTHER',
-                                                  'POS_TAGS'], delimiter=',')
+                                                  'POS_TAGS'], delimiter=',', extrasaction='ignore')
             csv_writer.writeheader()
 
             for row in csv_reader:
@@ -169,7 +167,7 @@ def other_entities(no_orgs):
                 row.update({'OTHER': entities_dict})
                 csv_writer.writerow(row)
 
-    print 'Written to all_entities_marked.csv'
+    print 'Written to entities_marked_all.csv'
 
 
 def extract_all_entities(no_orgs):

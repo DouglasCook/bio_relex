@@ -60,6 +60,7 @@ def get_tags_between(all_tags, start, finish, element):
     """
     Return string for all elements in tags between start and finish
     """
+
     tags = all_tags[start + 1:finish]
     # can put everything in lowercase in weka, probably better to do it there
     #return '"' + ' '.join([tag[element].lower() for tag in tags]) + '"'
@@ -71,15 +72,16 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     Generate feature vector for given entity pair
     Return None if the entity pair should not have been selected, if one is prefix of the other
     """
+
     # create feature vector with first attribute
     f_vector = [sent_num]
 
     # generate all pairs of indices, first need to unzip the dictionary values to only consider the indices
-    pairs = [(x, y) for x in zip(*dict1[e1])[0] for y in zip(*dict2[e2])[0]]
+    pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
 
     # TODO need to validate this assumption
     # find closest pair, assuming these will have the relation between them
-    distance = [abs(x - y) for (x, y) in pairs]
+    distance = [abs(x[0] - y[0]) for (x, y) in pairs]
     min_dist = min(distance)
 
     # this is a hacky way to deal with one entity whose prefix is a 'different' entity
@@ -92,10 +94,12 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
 
     # extract words and POS tags between the closest pair to use for bag of words features
     closest_pair = sorted(pairs[distance.index(min_dist)])
-    words = get_tags_between(tags, closest_pair[0], closest_pair[1], 0)
-    pos_tags = get_tags_between(tags, closest_pair[0], closest_pair[1], 1)
+    # starting index is index of first word + length of entity - 1
+    words = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 0)
+    pos_tags = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 1)
+    stem_tags = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 2)
     # append to feature vector
-    f_vector.extend([words, pos_tags])
+    f_vector.extend([words, stem_tags, pos_tags])
 
     return f_vector
 
@@ -170,8 +174,9 @@ def generate_feature_vectors():
     """
     single_sentence_relations()
     single_sentence_non_relations()
-    generate_true_set()
-    generate_false_set()
+    # these are called from weka.py
+    #generate_true_set()
+    #generate_false_set()
 
 
 if __name__ == '__main__':
