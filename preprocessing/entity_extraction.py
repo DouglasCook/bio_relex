@@ -37,10 +37,13 @@ def entity_indices(entities, tags):
                     if i + j >= len(tokens):
                         lengths.append([i, max(j - 1, 1)])
                         break
-                    # if the next word doesn't match
+                    # if the next word doesn't match then length is j
                     if tokens[i + j] != words[j]:
                         lengths.append([i, j])
                         break
+                    # if all words are matched then length is len(words) ie j + 1
+                    if j == len(words) - 1:
+                        lengths.append([i, j + 1])
 
         if len(lengths) > 0:
             entity_dict[entity] = lengths
@@ -120,12 +123,15 @@ def drug_and_company_entities():
             for row in csv_reader:
                 drugs = eval(row['DRUGS'])
                 comps = eval(row['COMPANIES'])
+
                 # find indices for drugs and companies mentioned in the row
                 tags = eval(row['POS_TAGS'])
                 drug_dict = entity_indices(drugs, tags)
                 comp_dict = entity_indices(comps, tags)
                 row.update({'DRUGS': drug_dict, 'COMPANIES': comp_dict})
+
                 # do the same for chunk tags - tokens are different so need to redo it to get correct indices
+                # maybe want to strip out anything that isn't beginning of a phrase before this?
                 chunks = eval(row['CHUNKS'])
                 drug_dict = entity_indices(drugs, chunks)
                 comp_dict = entity_indices(comps, chunks)
