@@ -48,7 +48,7 @@ def remove_punctuation(sentence):
     return sentence, no_punct
 
 
-def collate_texts():
+def collate_texts(delimiter):
     """
     Create one record per text fragment, with lists for all drugs and companies
     Only keep those texts that mention at least one of the drugs and one of the companies
@@ -61,7 +61,7 @@ def collate_texts():
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_reader = csv.DictReader(csv_in, delimiter=delimiter)
             csv_writer = csv.writer(csv_out, delimiter=',')
 
             drugs = set([])
@@ -245,5 +245,6 @@ def preprocessing():
 
 
 if __name__ == '__main__':
-    preprocessing()
+    collate_texts('\t')
+    #preprocessing()
     #stanford_entity_recognition()

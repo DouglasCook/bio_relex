@@ -59,7 +59,7 @@ def get_tags_between(all_tags, start, finish, element):
     """
     Return string for all elements in tags between start and finish
     """
-    tags = all_tags[start + 1:finish]
+    tags = all_tags[start:finish]
     # can put everything in lowercase in weka, probably better to do it there
     return '"' + ' '.join([tag[element] for tag in tags]) + '"'
 
@@ -69,7 +69,13 @@ def find_closest_pair(dict1, dict2, e1, e2):
     Find closest pair of the two given entities and distance between them
     """
     # generate all pairs of indices, first need to unzip the dictionary values to only consider the indices
-    pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
+    try:
+        pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
+    except:
+        print e1
+        print e2
+        print dict1
+        print dict2
 
     # TODO need to validate this assumption
     # find closest pair, assuming these will have the relation between them
@@ -91,14 +97,18 @@ def word_features(tags, closest_pair):
     Extract features based on the words and tags between the entities
     """
     # starting index is index of first word + length of entity - 1
-    words = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 0)
-    pos_tags = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 1)
-    stem_tags = get_tags_between(tags, closest_pair[0][0] + closest_pair[0][1] - 1, closest_pair[1][0], 2)
+    # don't need to subtract the 1 however?
+    e1_end = closest_pair[0][0] + closest_pair[0][1]
+    e2_start = closest_pair[1][0]
+
+    words = get_tags_between(tags, e1_end, e2_start, 0)
+    pos_tags = get_tags_between(tags, e1_end, e2_start,  1)
+    stem_tags = get_tags_between(tags, e1_end, e2_start, 2)
 
     return [words, stem_tags, pos_tags]
 
 
-def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
+def generate_word_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
     """
     Generate feature vector for given entity pair
     Return None if the entity pair should not have been selected, if one is prefix of the other
@@ -116,6 +126,31 @@ def generate_feature_vector(tags, sent_num, dict1, dict2, e1, e2):
 
     # append word features to feature vector
     f_vector.extend(word_features(tags, closest_pair))
+
+    return f_vector
+
+
+def generate_chunk_feature_vector(chunk_tags, dict1, dict2, e1, e2):
+    """
+    Generate chunk feature vector for given entity pair
+    Can assume here that the entities will be found since they exist in the tags part
+    """
+
+    # find closest pair of the entities and return
+    min_dist, closest_pair = find_closest_pair(dict1, dict2, e1, e2)
+    # if there is no actual pair of entities ie both are the same entity
+    if min_dist is None:
+        return None
+
+    e1_end = closest_pair[0][0] + closest_pair[0][1]
+    e2_start = closest_pair[1][0]
+    #print chunk_tags
+    #print chunk_tags[e1_end:e2_start]
+    phrase_beginnings = [c[2] for c in chunk_tags[e1_end:e2_start] if c[2] is not None and c[2][0] == 'B']
+    phrases = '"' + '-'.join([p[2:] for p in phrase_beginnings]) + '"'
+
+    # append word features to feature vector
+    f_vector = [phrases]
 
     return f_vector
 
@@ -138,12 +173,22 @@ def generate_true_set():
             comp_dict = eval(row['COMPANIES'])
             tags = eval(row['POS_TAGS'])
 
+            drug_chunk_dict = eval(row['D_CHUNKS'])
+            comp_chunk_dict = eval(row['C_CHUNKS'])
+            chunk_tags = eval(row['CHUNKS'])
+
             # consider all drug-company pairs
             for drug in drug_dict.keys():
                 for comp in comp_dict.keys():
-                    f_vector = generate_feature_vector(tags, row['SENT_NUM'], drug_dict, comp_dict, drug, comp)
 
+                    # generate word features
+                    f_vector = generate_word_feature_vector(tags, row['SENT_NUM'], drug_dict, comp_dict, drug, comp)
+
+                    # if f vector is None then the entity pair should not be taken into consideration
                     if f_vector is not None:
+                        # generate chunk features
+                        f_vector.extend(generate_chunk_feature_vector(chunk_tags, drug_chunk_dict, comp_chunk_dict,
+                                                                      drug, comp))
                         f_vector.append('yes')
                         feature_vectors.append(f_vector)
 
@@ -166,15 +211,21 @@ def generate_false_set():
         for row in csv_reader:
             other_dict = eval(row['OTHER'])
             tags = eval(row['POS_TAGS'])
+            chunk_dict = eval(row['O_CHUNKS'])
+            chunk_tags = eval(row['CHUNKS'])
 
             # need to use range loops here since want unique pairs from the lists
+            # TODO nicer way to do this?
             for i in xrange(len(other_dict.keys())):
                 for j in xrange(i, len(other_dict.keys())):
 
                     e1, e2 = other_dict.keys()[i], other_dict.keys()[j]
-                    f_vector = generate_feature_vector(tags, row['SENT_NUM'], other_dict, other_dict, e1, e2)
+                    f_vector = generate_word_feature_vector(tags, row['SENT_NUM'], other_dict, other_dict, e1, e2)
 
                     if f_vector is not None:
+                        # generate chunk features
+                        f_vector.extend(generate_chunk_feature_vector(chunk_tags, chunk_dict, chunk_dict,
+                                                                      e1, e2))
                         f_vector.append('no')
                         feature_vectors.append(f_vector)
 

@@ -25,7 +25,9 @@ class BigramChunker(nltk.ChunkParserI):
         pos_tags = [pos for (word, pos) in sentence]
         tagged_pos_tags = self.tagger.tag(pos_tags)
         chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
-        conlltags = [(word, pos, chunktag) for ((word, pos), chunktag) in zip(sentence, chunktags)]
+        # TODO check if this should or should not be done???
+        # want to strip leading and trailing punctuation here so the chunk tags better match the pos tags
+        conlltags = [(word.strip('"\'-.,'), pos, chunktag) for ((word, pos), chunktag) in zip(sentence, chunktags)]
         #return nltk.chunk.util.conlltags2tree(conlltags)
         return conlltags
 
