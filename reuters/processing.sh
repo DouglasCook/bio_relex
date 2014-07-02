@@ -1,7 +1,8 @@
 #!/bin/bash
+# This needs to be run from the Stanford NER folder, or maybe needs the classpaths fixed...
 
 # don't use spaces!
-FILES=/Users/Dug/Imperial/individual_project/code/reuters_new/stanford_input_ORIG/*
+FILES=/Users/Dug/Imperial/individual_project/code/reuters/stanford_input_ORIG/*
 EXT=.out
 
 # $ means you want to use the value of the variable

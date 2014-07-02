@@ -44,7 +44,7 @@ def stanford_input():
 
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records_clean.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records.csv'))
 
     # need to create list of files to be processed
     file_list = 'reuters/stanford_input/file_list.txt'

@@ -58,7 +58,7 @@ def collate_texts(delimiter):
     #file_in = 'data/reuters/press_releases/PR_drug_company_500.csv'
     file_in = 'data/reuters/TR_PR_DrugCompany.csv'
     file_in = os.path.abspath(os.path.join(basepath, '..', '..', file_in))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records_clean.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records.csv'))
 
     #with open(file_in, 'rb') as csv_in:
     # may need to open with rU to deal with universal newlines - something to do with excel
@@ -69,6 +69,7 @@ def collate_texts(delimiter):
 
             drugs = set([])
             companies = set([])
+            # TODO need to fix this so it always gets first record regardless of source ID
             src = '174077'
             text = ''
 
@@ -243,7 +244,7 @@ def preprocessing():
     Step 1 in the pipeline so far...
     Retrieve and clean relevant texts from CSV and carry out POS tagging
     """
-    #collate_texts()
+    collate_texts()
     clean_and_tag_all()
 
 
