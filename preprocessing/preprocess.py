@@ -55,11 +55,14 @@ def collate_texts(delimiter):
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = 'data/reuters/press_releases/PR_drug_company_500.csv'
+    #file_in = 'data/reuters/press_releases/PR_drug_company_500.csv'
+    file_in = 'data/reuters/TR_PR_DrugCompany.csv'
     file_in = os.path.abspath(os.path.join(basepath, '..', '..', file_in))
     file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records_clean.csv'))
 
-    with open(file_in, 'rb') as csv_in:
+    #with open(file_in, 'rb') as csv_in:
+    # may need to open with rU to deal with universal newlines - something to do with excel
+    with open(file_in, 'rU') as csv_in:
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=delimiter)
             csv_writer = csv.writer(csv_out, delimiter=',')
