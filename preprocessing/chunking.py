@@ -47,8 +47,8 @@ def remove_punct():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/clean_chunks.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/clean_chunks.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:

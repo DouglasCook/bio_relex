@@ -8,8 +8,8 @@ def single_sentence_relations():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked_all.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/entities_marked_all.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_sentence_relations.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -34,8 +34,8 @@ def single_sentence_non_relations():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked_all.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_non_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/entities_marked_all.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_sentence_non_relations.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -72,10 +72,12 @@ def find_closest_pair(dict1, dict2, e1, e2):
     try:
         pairs = [(x, y) for x in dict1[e1] for y in dict2[e2]]
     except:
+        # print relevant info when an exception is caught, easier to debug
         print e1
         print e2
         print dict1
         print dict2
+        return None, None
 
     # TODO need to validate this assumption
     # find closest pair, assuming these will have the relation between them
@@ -161,7 +163,7 @@ def generate_true_set():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_sentence_relations.csv'))
 
     feature_vectors = []
 
@@ -201,7 +203,7 @@ def generate_false_set():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_sentence_non_relations.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_sentence_non_relations.csv'))
 
     feature_vectors = []
 

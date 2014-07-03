@@ -109,8 +109,8 @@ def drug_and_company_entities():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/entities_marked.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -154,8 +154,8 @@ def other_entities(no_orgs):
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/entities_marked_all.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/entities_marked.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/entities_marked_all.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:

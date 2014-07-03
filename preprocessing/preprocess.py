@@ -58,7 +58,7 @@ def collate_texts(delimiter):
     #file_in = 'data/reuters/press_releases/PR_drug_company_500.csv'
     file_in = 'data/reuters/TR_PR_DrugCompany.csv'
     file_in = os.path.abspath(os.path.join(basepath, '..', '..', file_in))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_records.csv'))
 
     #with open(file_in, 'rb') as csv_in:
     # may need to open with rU to deal with universal newlines - something to do with excel
@@ -115,8 +115,8 @@ def clean_and_tag_all():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/single_records.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/single_records.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
 
     sentence_splitter = set_up_tokenizer()
     chunker = chunking.set_up_chunker()
@@ -185,8 +185,8 @@ def stanford_entity_recognition():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_NE.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
 
     # set up tagger
     st = nltk.tag.stanford.NERTagger(
@@ -216,8 +216,8 @@ def nltk_entity_recognition():
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/sentences_NE.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
