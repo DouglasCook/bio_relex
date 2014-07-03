@@ -189,10 +189,13 @@ def generate_true_set():
                     # if f vector is None then the entity pair should not be taken into consideration
                     if f_vector is not None:
                         # generate chunk features
-                        f_vector.extend(generate_chunk_feature_vector(chunk_tags, drug_chunk_dict, comp_chunk_dict,
-                                                                      drug, comp))
-                        f_vector.append('yes')
-                        feature_vectors.append(f_vector)
+                        chunk_f_vector = generate_chunk_feature_vector(chunk_tags, drug_chunk_dict, comp_chunk_dict,
+                                                                       drug, comp)
+                        if chunk_f_vector is not None:
+                            f_vector.extend(chunk_f_vector)
+                            # add class label
+                            f_vector.append('yes')
+                            feature_vectors.append(f_vector)
 
     return feature_vectors
 
@@ -226,10 +229,13 @@ def generate_false_set():
 
                     if f_vector is not None:
                         # generate chunk features
-                        f_vector.extend(generate_chunk_feature_vector(chunk_tags, chunk_dict, chunk_dict,
-                                                                      e1, e2))
-                        f_vector.append('no')
-                        feature_vectors.append(f_vector)
+                        chunk_f_vector = generate_chunk_feature_vector(chunk_tags, chunk_dict, chunk_dict,
+                                                                       e1, e2)
+                        if chunk_f_vector is not None:
+                            f_vector.extend(chunk_f_vector)
+                            # add class label
+                            f_vector.append('no')
+                            feature_vectors.append(f_vector)
 
     return feature_vectors
 

@@ -48,7 +48,7 @@ def remove_punctuation(sentence):
     return sentence, no_punct
 
 
-def collate_texts(delimiter):
+def collate_texts(delimiter='\t'):
     """
     Create one record per text fragment, with lists for all drugs and companies
     Only keep those texts that mention at least one of the drugs and one of the companies
@@ -244,7 +244,7 @@ def preprocessing():
     Step 1 in the pipeline so far...
     Retrieve and clean relevant texts from CSV and carry out POS tagging
     """
-    collate_texts()
+    collate_texts('\t')
     clean_and_tag_all()
 
 
