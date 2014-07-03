@@ -48,8 +48,28 @@ def remove_punctuation(sentence):
     return sentence, no_punct
 
 
+def contains_both(text, drugs, companies):
+    """
+    Check whether the text contains at least one of the drugs and one of the companies
+    """
+    # loop through drugs and companies to see if one of each is mentioned
+    company_suffixes = ['inc', 'gmbh', 'co', 'plc', 'group', 'corp', 'ltd', 'ag', 'a/s']
+    for d in drugs:
+        if d in text:
+            for c in companies:
+                # if the company has a common suffix check for the leading word only
+                tokens = c.split()
+                if tokens[-1].lower() in company_suffixes:
+                    c = tokens[0]
+                if c in text:
+                    return True
+
+    return False
+
+
 def collate_texts(delimiter='\t'):
     """
+    Input spreadsheet contains one row per drug-company pair, so the same text appears on multiple rows
     Create one record per text fragment, with lists for all drugs and companies
     Only keep those texts that mention at least one of the drugs and one of the companies
     """
@@ -69,8 +89,7 @@ def collate_texts(delimiter='\t'):
 
             drugs = set([])
             companies = set([])
-            # TODO need to fix this so it always gets first record regardless of source ID
-            src = '174077'
+            src = '0'
             text = ''
 
             csv_writer.writerow(['SOURCE_ID', 'DRUGS', 'COMPANIES', 'FRAGMENT'])
@@ -78,35 +97,23 @@ def collate_texts(delimiter='\t'):
             # think that the dict reader skips header row automagically
             for row in csv_reader:
 
-                if row['SOURCE_ID'] != src:
+                # src != 0 so the first row will always be included
+                if row['SOURCE_ID'] != src and src != '0':
                     # first check if the text contains at least on of each drug and company tagged
-                    d_relevant = False
-                    c_relevant = False
-                    for d in drugs:
-                        if d in text:
-                            d_relevant = True
-                            break
-
-                    if d_relevant:
-                        for c in companies:
-                            if c in text:
-                                c_relevant = True
-                                break
-
-                    if d_relevant and c_relevant:
+                    if contains_both(text, drugs, companies):
                         csv_writer.writerow([src, list(drugs), list(companies), nltk.clean_html(text)])
 
                     # reset lists
                     drugs = set([])
                     companies = set([])
 
-                # append drugs and companies to lists
+                # append drug and company to lists
                 drugs.add(row['DRUG_NAME'])
                 companies.add((row['COMPANY_NAME']))
                 src = row['SOURCE_ID']
                 text = row['FRAGMENT']
 
-    print 'Written to single_records_clean.csv'
+    print 'Written to single_records.csv'
 
 
 def clean_and_tag_all():
@@ -176,67 +183,6 @@ def clean_and_tag_all():
                             csv_writer.writerow(row)
 
     print 'Written to sentences_POS.csv'
-
-
-def stanford_entity_recognition():
-    """
-    Produce NE chunks from POS tags - this uses the Stanford tagger implementation
-    This is actually too slow to be of any use, there must be a way to batch it but for now just using bash script
-    """
-    # set filepath to input
-    basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
-
-    # set up tagger
-    st = nltk.tag.stanford.NERTagger(
-        '/Users/Dug/Imperial/individual_project/tools/stanford_NLP/stanford-ner-2014-06-16/classifiers/english.all.3class.distsim.crf.ser.gz',
-        '/Users/Dug/Imperial/individual_project/tools/stanford_NLP/stanford-ner-2014-06-16/stanford-ner.jar')
-
-    with open(file_in, 'rb') as csv_in:
-        with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, delimiter=',')
-
-            # write column headers on first row
-            csv_writer.writerow(['SOURCE_ID', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS', 'NE_CHUNKS'])
-
-            for row in csv_reader:
-                ne_chunks = st.tag(row['NO_PUNCT'].split())
-                csv_writer.writerow([row['SOURCE_ID'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
-                                     row['POS_TAGS'], ne_chunks])
-
-    print 'Written to sentences_NE.csv'
-
-
-def nltk_entity_recognition():
-    """
-    Produce NE chunks from POS tags - this NLTK implementation is not great though so should use Stanford output instead
-    This needs to be done before the punctuation is removed
-    """
-    # set filepath to input
-    basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
-
-    with open(file_in, 'rb') as csv_in:
-        with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, delimiter=',')
-
-            # write column headers on first row
-            csv_writer.writerow(['SOURCE_ID', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS', 'NE_CHUNKS'])
-
-            for row in csv_reader:
-                print row
-                # use NLTK NE recognition, binary means relations are not classified
-                # it's based on the ACE corpus so may not work completely as desired...
-                tags = eval(row['POS_TAGS'])
-                ne_chunks = nltk.ne_chunk(tags, binary=True)
-                row.append(ne_chunks)
-                csv_writer.writerow(row)
-                # csv_writer.writerow([row['SOURCE_ID'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
-                # row['POS_TAGS'], ne_chunks])
 
 
 def preprocessing():

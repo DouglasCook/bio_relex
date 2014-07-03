@@ -103,5 +103,67 @@ def chunk(f_in, f_out):
                 row[-1] = result
                 csv_writer.writerow(row)
 
+
+def stanford_entity_recognition():
+    """
+    Produce NE chunks from POS tags - this uses the Stanford tagger implementation
+    This is actually too slow to be of any use, there must be a way to batch it but for now just using bash script
+    """
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
+
+    # set up tagger
+    st = nltk.tag.stanford.NERTagger(
+        '/Users/Dug/Imperial/individual_project/tools/stanford_NLP/stanford-ner-2014-06-16/classifiers/english.all.3class.distsim.crf.ser.gz',
+        '/Users/Dug/Imperial/individual_project/tools/stanford_NLP/stanford-ner-2014-06-16/stanford-ner.jar')
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            # write column headers on first row
+            csv_writer.writerow(['SOURCE_ID', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS', 'NE_CHUNKS'])
+
+            for row in csv_reader:
+                ne_chunks = st.tag(row['NO_PUNCT'].split())
+                csv_writer.writerow([row['SOURCE_ID'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
+                                     row['POS_TAGS'], ne_chunks])
+
+    print 'Written to sentences_NE.csv'
+
+
+def nltk_entity_recognition():
+    """
+    Produce NE chunks from POS tags - this NLTK implementation is not great though so should use Stanford output instead
+    This needs to be done before the punctuation is removed
+    """
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_POS.csv'))
+    file_out = os.path.abspath(os.path.join(basepath, '..', 'reuters/csv/sentences_NE.csv'))
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, delimiter=',')
+
+            # write column headers on first row
+            csv_writer.writerow(['SOURCE_ID', 'SENTENCE', 'DRUGS', 'COMPANIES', 'POS_TAGS', 'NE_CHUNKS'])
+
+            for row in csv_reader:
+                print row
+                # use NLTK NE recognition, binary means relations are not classified
+                # it's based on the ACE corpus so may not work completely as desired...
+                tags = eval(row['POS_TAGS'])
+                ne_chunks = nltk.ne_chunk(tags, binary=True)
+                row.append(ne_chunks)
+                csv_writer.writerow(row)
+                # csv_writer.writerow([row['SOURCE_ID'], row['SENTENCE'], row['DRUGS'], row['COMPANIES'],
+                # row['POS_TAGS'], ne_chunks])
+
+
 if __name__ == '__main__':
     chunk('data/sentences_POS.csv', 'data/sentences_chunk.csv')
