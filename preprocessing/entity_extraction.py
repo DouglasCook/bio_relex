@@ -167,7 +167,7 @@ def other_entities(no_orgs):
 
             for row in csv_reader:
                 # extract tagged entities from preprocessed file
-                ne_filepath = os.path.abspath(os.path.join(basepath, '..', 'reuters/named_entities'))
+                ne_filepath = os.path.abspath(os.path.join(basepath, '..', 'reuters/stanford_input/named_entities'))
                 entities = entities_only(ne_filepath + '/' + row['SOURCE_ID'] + '.txt', no_orgs)
 
                 # find entities in POS tags

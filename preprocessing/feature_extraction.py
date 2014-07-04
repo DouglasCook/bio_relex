@@ -151,8 +151,12 @@ def generate_chunk_feature_vector(chunk_tags, dict1, dict2, e1, e2):
     phrase_beginnings = [c[2] for c in chunk_tags[e1_end:e2_start] if c[2] is not None and c[2][0] == 'B']
     phrases = '"' + '-'.join([p[2:] for p in phrase_beginnings]) + '"'
 
+    nps = sum(1 for p in phrase_beginnings if p == 'B-NP')
+    vps = sum(1 for p in phrase_beginnings if p == 'B-VP')
+    pps = sum(1 for p in phrase_beginnings if p == 'B-PP')
+
     # append word features to feature vector
-    f_vector = [phrases]
+    f_vector = [phrases, nps, vps, pps]
 
     return f_vector
 

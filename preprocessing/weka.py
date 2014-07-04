@@ -43,6 +43,7 @@ def write_file(file_name):
     # write the header stuff
     create_arff(file_out, 'drug_company', [['sent_num', 'NUMERIC'], ['word_gap', 'NUMERIC'], ['words', 'STRING'],
                                            ['stems', 'STRING'], ['pos_tags', 'STRING'], ['phrase_path', 'STRING'],
+                                           ['num_NPs', 'NUMERIC'], ['num_VPs', 'NUMERIC'], ['num_PPs', 'NUMERIC'],
                                            ['true_relation', '{yes, no}']])
     # add the data
     add_arff_data(file_out, feature_extraction.generate_true_set())
