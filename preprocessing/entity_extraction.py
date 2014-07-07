@@ -77,7 +77,9 @@ def other_entity_indices(entities, drug_dict, comp_dict, tags):
             # then need to extract the indices only
             d_chain = [d[0] for d in itertools.chain(*drug_dict.values())]
             c_chain = [c[0] for c in itertools.chain(*comp_dict.values())]
+
             # if the entity doesn't share an index with drug or company add it
+            # check single occurrence of 'other' against all occurrences of drugs and companies
             if indices[0][0] not in d_chain and indices[0][0] not in c_chain:
                 entity_dict[entity] = indices
 
@@ -138,7 +140,7 @@ def drug_and_company_entities():
                 row.update({'D_CHUNKS': drug_dict, 'C_CHUNKS': comp_dict})
 
                 # remove this field, think pop is the only way to do it
-                # what do I actually need this for in the first place?
+                # TODO what do I actually need this for in the first place?
                 row.pop('NO_PUNCT')
                 csv_writer.writerow(row)
 

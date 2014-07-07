@@ -24,6 +24,7 @@ def single_sentence_relations():
                 if len(eval(row['DRUGS'])) > 0 and len(eval(row['COMPANIES'])) > 0:
                     csv_writer.writerow(row)
 
+    # TODO write everything to one file with yes or no class attribute? This may avoid duplicates?
     print 'Written to single_sentence_relations.csv'
 
 
@@ -137,7 +138,6 @@ def generate_chunk_feature_vector(chunk_tags, dict1, dict2, e1, e2):
     Generate chunk feature vector for given entity pair
     Can assume here that the entities will be found since they exist in the tags part
     """
-
     # find closest pair of the entities and return
     min_dist, closest_pair = find_closest_pair(dict1, dict2, e1, e2)
     # if there is no actual pair of entities ie both are the same entity
