@@ -1,5 +1,6 @@
 import os
 import csv
+import pickle
 import xml.etree.cElementTree as ET     # python XML manipulation library, C version because it's way faster!
 
 import nltk.tokenize.punkt as punkt
@@ -18,18 +19,18 @@ def set_up_tokenizer():
     return punkt.PunktSentenceTokenizer(punkt_params)
 
 
-def convert_to_csv():
+def abstracts_to_csv():
     """
     Create one record per text
     """
     # TODO parse the HTML properly, maybe use beautiful soup?
     basepath = os.path.dirname(__file__)
-    file_path = os.path.abspath(os.path.join(basepath, 'abstracts'))
-    files = os.listdir(file_path)
+    # unpickle list of pubmed ids
+    files = pickle.load(open('pubmed_ids.p', 'rb'))
 
     # need to deal with the fucking DS store file...
-    files = [os.path.abspath(os.path.join(basepath, 'abstracts', f)) for f in files if f != '.DS_Store']
-    f_out = os.path.abspath(os.path.join(basepath, 'csv', 'texts.csv'))
+    files = [os.path.abspath(os.path.join(basepath, 'abstracts', f + '.xml')) for f in files]
+    f_out = os.path.abspath(os.path.join(basepath, 'csv', 'sentences.csv'))
 
     sentence_splitter = set_up_tokenizer()
 
@@ -55,5 +56,34 @@ def convert_to_csv():
                 csv_writer.writerow(dict_row)
 
 
+def relations_to_dict():
+    """
+    Put all relations into
+    """
+    # load pubmed ids
+    pubmed_ids = pickle.load(open('pubmed_ids.p', 'rb'))
+    basepath = os.path.dirname(__file__)
+
+    relation_dict = {'pubmed_id': [], 'pos1': [], 'pos2': [], 'true_relation': []}
+
+    for pid in pubmed_ids:
+        f = os.path.abspath(os.path.join(basepath, '..', '..', 'data', 'euadr_corpus', pid + '.csv'))
+
+        with open(f, 'rb') as csv_in:
+            csv_reader = csv.reader(csv_in, delimiter='\t')
+
+            for row in csv_reader:
+                # if the row describes a relation add details to dict
+                if row[2] == 'relation':
+                    relation_dict['pubmed_id'].append(pid)
+                    relation_dict['pos1'].append(row[7])
+                    relation_dict['pos2'].append(row[8])
+                    relation_dict['true_relation'].append(row[1])
+
+    # pickle it
+    pickle.dump(relation_dict, open('relation_dict.p', 'wb'))
+
+
 if __name__ == '__main__':
-    convert_to_csv()
+    relations_to_dict()
+    #abstracts_to_csv()

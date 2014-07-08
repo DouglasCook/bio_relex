@@ -1,5 +1,6 @@
 import os
 import urllib2
+import pickle
 
 
 def scrape_pubmed():
@@ -26,5 +27,21 @@ def scrape_pubmed():
                 f_out.write(raw)
 
 
+def file_list():
+    """
+    Pickle a list containing all pubmed IDs to be used
+    """
+    files = os.listdir('/Users/Dug/Imperial/individual_project/data/euadr_corpus')
+    id_list = []
+    for f in files:
+        parts = f.split('.')
+        if parts[1] == 'csv':
+            id_list.append(parts[0])
+
+    # now pickle it for later use
+    pickle.dump(id_list, open('pubmed_ids.p', 'wb'))
+
+
 if __name__ == '__main__':
-    scrape_pubmed()
+    #scrape_pubmed()
+    file_list()
