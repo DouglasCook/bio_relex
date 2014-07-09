@@ -50,7 +50,8 @@ def tagging():
     file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
 
     chunker = set_up_chunker()
-    stopwords = nltk.corpus.stopwords.words('english')
+    # don't think I actually want to remove stopwords?
+    #stopwords = nltk.corpus.stopwords.words('english')
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -72,5 +73,39 @@ def tagging():
                 row.update({'between_tags': chunks})
                 csv_writer.writerow(row)
 
+
+def generate_features():
+    """
+    Create basic feature vector for each record
+    """
+    # set filepath to input
+    basepath = os.path.dirname(__file__)
+    file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
+
+    feature_vectors = []
+
+    with open(file_in, 'rb') as csv_in:
+        csv_reader = csv.DictReader(csv_in, delimiter=',')
+
+        for row in csv_reader:
+            tags = eval(row['between_tags'])
+            # TODO ask about punctuation, keep it in or chuck it out?
+            word_gap = len(tags)
+
+            words = '"' + ' '.join([t[0] for t in tags]) + '"'
+            pos = '"' + ' '.join([t[1] for t in tags]) + '"'
+
+            # get beginnings of phrases only
+            phrase_path = '"' + ' '.join([t[2] for t in tags if t[2] is not None and t[2][0] == 'B']) + '"'
+
+            # combination of tag and phrase type
+            combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2] is not None]) + '"'
+
+            # TODO add other features from reuters: phrase counts, stemmed words
+            feature_vectors.append([row['true_relation'], row['sent_num'], word_gap, words, pos, phrase_path, combo])
+
+    return feature_vectors
+
 if __name__ == '__main__':
-    tagging()
+    #tagging()
+    generate_features()

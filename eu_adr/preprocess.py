@@ -67,7 +67,8 @@ def abstracts_to_csv():
             # so need to construct text in this longwinded way instead of nice comprehension above
             abstract = ''
             for n in nodes:
-                if n.attrib != {} and n.attrib['Label'] is not None and n.attrib['Label'] != 'UNLABELLED':
+                # can check for empty list, dict or None by simply using if
+                if n.attrib and n.attrib['Label'] and n.attrib['Label'] != 'UNLABELLED':
                     abstract += ' ' + n.attrib['Label'] + ': ' + n.text
                 else:
                     abstract += ' ' + n.text
@@ -114,7 +115,8 @@ def relations_to_dict():
                     r_dict['true_relation'].append(row[1])
 
         # apparently some of the files contain no relations so need to check that here
-        if len(r_dict['start1']) > 0:
+        # can just use 'if object' instead of 'len(object) > 0'
+        if r_dict['start1']:
             # now we need to order them by location since the spreadsheet is not in order
             sorter = zip(r_dict['start1'], r_dict['end1'], r_dict['start2'], r_dict['end2'], r_dict['true_relation'])
             sorter.sort()
@@ -123,7 +125,7 @@ def relations_to_dict():
             relation_dict[pid] = r_dict
 
     # pickle it
-    print relation_dict['16950808']
+    #print relation_dict['16950808']
     pickle.dump(relation_dict, open('relation_dict.p', 'wb'))
 
 
@@ -199,5 +201,5 @@ def create_input_file():
 
 if __name__ == '__main__':
     abstracts_to_csv()
-    create_input_file()
+    #create_input_file()
     #relations_to_dict()
