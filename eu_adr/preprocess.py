@@ -34,14 +34,12 @@ def fix_html(text):
 
 def abstracts_to_csv():
     """
-    Create one record per text
+    Create one record per text using XML abstracts scraped from PubMed
     """
     # TODO parse the HTML properly, maybe use beautiful soup?
     basepath = os.path.dirname(__file__)
     # unpickle list of pubmed ids
     files = pickle.load(open('pubmed_ids.p', 'rb'))
-
-    # need to deal with the fucking DS store file...
     files = [os.path.abspath(os.path.join(basepath, 'abstracts', f + '.xml')) for f in files]
     f_out = os.path.abspath(os.path.join(basepath, 'csv', 'sentences.csv'))
 
@@ -85,7 +83,7 @@ def abstracts_to_csv():
 
 def relations_to_dict():
     """
-    Put all relations into dictionary to pickle
+    Put all relations from EU-ADR corpus into dictionary to pickle
     """
     # load pubmed ids
     pubmed_ids = pickle.load(open('pubmed_ids.p', 'rb'))
@@ -95,9 +93,11 @@ def relations_to_dict():
 
     for pid in pubmed_ids:
         f = os.path.abspath(os.path.join(basepath, '..', '..', 'data', 'euadr_corpus', pid + '.csv'))
-        r_dict = {'start1': [], 'end1': [], 'start2': [], 'end2': [], 'true_relation': []}
+        r_dict = {'start1': [], 'end1': [], 'type1': [], 'start2': [], 'end2': [], 'type2': [], 'rel_type': [],
+                  'true_relation': []}
 
         with open(f, 'rb') as csv_in:
+            # no point in using dict reader since there are no headings
             csv_reader = csv.reader(csv_in, delimiter='\t')
 
             for row in csv_reader:
@@ -107,20 +107,25 @@ def relations_to_dict():
                     indices = row[7].split(':')
                     r_dict['start1'].append(int(indices[0]))
                     r_dict['end1'].append(int(indices[1]))
+                    r_dict['type1'].append(row[0].split('-')[0])
 
                     indices = row[8].split(':')
                     r_dict['start2'].append(int(indices[0]))
                     r_dict['end2'].append(int(indices[1]))
+                    r_dict['type2'].append(row[0].split('-')[1])
 
                     r_dict['true_relation'].append(row[1])
+                    r_dict['rel_type'].append(row[10])
 
         # apparently some of the files contain no relations so need to check that here
         # can just use 'if object' instead of 'len(object) > 0'
         if r_dict['start1']:
             # now we need to order them by location since the spreadsheet is not in order
-            sorter = zip(r_dict['start1'], r_dict['end1'], r_dict['start2'], r_dict['end2'], r_dict['true_relation'])
+            sorter = zip(r_dict['start1'], r_dict['end1'], r_dict['type1'], r_dict['start2'], r_dict['end2'],
+                         r_dict['type2'], r_dict['rel_type'], r_dict['true_relation'])
             sorter.sort()
-            r_dict['start1'], r_dict['end1'], r_dict['start2'], r_dict['end2'], r_dict['true_relation'] = zip(*sorter)
+            (r_dict['start1'], r_dict['end1'], r_dict['type1'], r_dict['start2'], r_dict['end2'], r_dict['type2'],
+             r_dict['rel_type'], r_dict['true_relation']) = zip(*sorter)
 
             relation_dict[pid] = r_dict
 
@@ -140,22 +145,27 @@ def create_output_row(relations, row, i, length):
     if relations['start1'][i] < relations['start2'][i]:
         start1 = relations['start1'][i] - length
         end1 = relations['end1'][i] - length
+        type1 = relations['type1'][i]
         start2 = relations['start2'][i] - length
         end2 = relations['end2'][i] - length
+        type2 = relations['type2'][i]
     else:
         start1 = relations['start2'][i] - length
         end1 = relations['end2'][i] - length
+        type1 = relations['type2'][i]
         start2 = relations['start1'][i] - length
         end2 = relations['end1'][i] - length
+        type2 = relations['type1'][i]
 
     e1 = sent[start1:end1]
     e2 = sent[start2:end2]
     rel = relations['true_relation'][i]
+    rel_type = relations['rel_type'][i]
     between = sent[end1:start2]
 
     # need to re-encode everything as utf-8 ffs
-    return [row['id'], row['sent_num'], rel, e1.encode('utf-8'), e2.encode('utf-8'), start1, end1, start2, end2,
-            sent.encode('utf-8'), between.encode('utf-8')]
+    return [row['id'], row['sent_num'], rel, rel_type, e1.encode('utf-8'), e2.encode('utf-8'), type1.encode('utf-8'),
+            type2.encode('utf-8'), start1, end1, start2, end2, sent.encode('utf-8'), between.encode('utf-8')]
 
 
 def create_input_file():
@@ -172,11 +182,13 @@ def create_input_file():
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, ['pid', 'true_relation', 'e1', 'e2', 'start1', 'end1', 'start2', 'end2',
-                                              'sent_num', 'sentence', 'between'], delimiter=',')
+            csv_writer = csv.writer(csv_out, ['pid', 'sent_num', 'true_relation', 'rel_type', 'e1', 'e2', 'type1',
+                                              'type2', 'start1', 'end1', 'start2', 'end2', 'sent_num', 'sentence',
+                                              'between'], delimiter=',')
+
+            csv_writer.writerow(['pid', 'sent_num', 'true_relation', 'rel_type', 'e1', 'e2', 'type1', 'type2',
+                                 'start1', 'end1', 'start2', 'end2', 'sent_num', 'sentence', 'between'])
             length, i = 0, 0
-            csv_writer.writerow(['pid', 'sent_num', 'true_relation', 'e1', 'e2', 'start1', 'end1', 'start2', 'end2',
-                                 'sentence', 'between'])
 
             # loop through all sentences
             for row in csv_reader:
@@ -200,6 +212,6 @@ def create_input_file():
 
 
 if __name__ == '__main__':
-    abstracts_to_csv()
-    #create_input_file()
-    #relations_to_dict()
+    #abstracts_to_csv()
+    relations_to_dict()
+    create_input_file()
