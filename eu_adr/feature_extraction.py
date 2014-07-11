@@ -27,7 +27,7 @@ class BigramChunker(nltk.ChunkParserI):
         tagged_pos_tags = self.tagger.tag(pos_tags)
         chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
         conlltags = [(word, pos, chunktag) for ((word, pos), chunktag) in zip(sentence, chunktags)]
-        #return nltk.chunk.util.conlltags2tree(conlltags)
+        # return nltk.chunk.util.conlltags2tree(conlltags)
         return conlltags
 
 
@@ -38,6 +38,18 @@ def set_up_chunker():
     # other option is the treebank chunk corpus
     train_sents = nltk.corpus.conll2000.chunked_sents('train.txt')
     return BigramChunker(train_sents)
+
+
+def pos_and_chunk_tags(text, chunker):
+    """
+    Return word, pos tag, chunk triples
+    """
+    text = nltk.word_tokenize(text)
+    # text = [b for b in between if b not in stopwords]
+    tags = nltk.pos_tag(text)
+    chunks = chunker.parse(tags)
+
+    return chunks
 
 
 def tagging():
@@ -51,14 +63,32 @@ def tagging():
 
     chunker = set_up_chunker()
     # don't think I actually want to remove stopwords?
-    #stopwords = nltk.corpus.stopwords.words('english')
+    # stopwords = nltk.corpus.stopwords.words('english')
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
+            # set columns here so they can be more easily changed
+            cols = ['pid',
+                    'sent_num',
+                    'true_relation',
+                    'rel_type',
+                    'e1',
+                    'e2',
+                    'type1',
+                    'type2',
+                    'start1',
+                    'end1',
+                    'start2',
+                    'end2',
+                    'sentence',
+                    'before_tags',
+                    'between_tags',
+                    'after_tags',
+                    'before',  # TODO get rid of these, need to change the write cols instead of using update
+                    'between',
+                    'after']
             csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.DictWriter(csv_out, ['pid', 'true_relation', 'e1', 'e2', 'start1', 'end1', 'start2',
-                                                  'end2', 'sent_num', 'sentence', 'between', 'between_tags'],
-                                        delimiter=',')
+            csv_writer = csv.DictWriter(csv_out, cols, delimiter=',')
             csv_writer.writeheader()
 
             for row in csv_reader:
@@ -66,12 +96,41 @@ def tagging():
                 sys.stdout.write('.')
                 sys.stdout.flush()
 
-                between = nltk.word_tokenize(row['between'])
-                #between = [b for b in between if b not in stopwords]
-                tags = nltk.pos_tag(between)
-                chunks = chunker.parse(tags)
-                row.update({'between_tags': chunks})
+                row.update({'before_tags': pos_and_chunk_tags(row['before'], chunker)})
+                row.update({'between_tags': pos_and_chunk_tags(row['between'], chunker)})
+                row.update({'after_tags': pos_and_chunk_tags(row['after'], chunker)})
                 csv_writer.writerow(row)
+
+
+def part_feature_vectors(tags, stopwords, count):
+    """
+    Generate features for a set of words, before, between or after
+    """
+    # TODO ask about punctuation, keep it in or chuck it out?
+    # lets try removing stopwords and things not in chunks here
+    tags = [t for t in tags if t[0] not in stopwords and t[2] != 'O']
+    word_gap = len(tags)
+
+    # WORDS
+    words = '"' + ' '.join([t[0] for t in tags]) + '"'
+    # POS
+    pos = '"' + ' '.join([t[1] for t in tags]) + '"'
+    # CHUNKS - only consider beginning tags of phrases
+    phrases = [t[2] for t in tags if t[2] is not None and t[2][0] == 'B']
+    # slice here to remove 'B-'
+    phrase_path = '"' + '-'.join([p[2:] for p in phrases]) + '"'
+    # COMBO - combination of tag and phrase type
+    combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2] is not None]) + '"'
+
+    # count number of each type of phrase
+    nps = sum(1 for p in phrases if p == 'B-NP')
+    vps = sum(1 for p in phrases if p == 'B-VP')
+    pps = sum(1 for p in phrases if p == 'B-PP')
+
+    if count:
+        return [words, pos, phrase_path, combo, nps, vps, pps], word_gap
+    else:
+        return [words, pos, phrase_path, combo, nps, vps, pps]
 
 
 def generate_features():
@@ -83,29 +142,35 @@ def generate_features():
     file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
 
     feature_vectors = []
+    stopwords = nltk.corpus.stopwords.words('english')
 
     with open(file_in, 'rb') as csv_in:
         csv_reader = csv.DictReader(csv_in, delimiter=',')
 
         for row in csv_reader:
-            tags = eval(row['between_tags'])
-            # TODO ask about punctuation, keep it in or chuck it out?
-            word_gap = len(tags)
-
-            words = '"' + ' '.join([t[0] for t in tags]) + '"'
-            pos = '"' + ' '.join([t[1] for t in tags]) + '"'
-
-            # get beginnings of phrases only
-            phrase_path = '"' + ' '.join([t[2] for t in tags if t[2] is not None and t[2][0] == 'B']) + '"'
-
-            # combination of tag and phrase type
-            combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2] is not None]) + '"'
-
+            f_vector = []
+            # calculate these first to get the word gap
+            between_features, word_gap = part_feature_vectors(eval(row['between_tags']), stopwords, True)
+            # general features first
             # TODO add other features from reuters: phrase counts, stemmed words
-            feature_vectors.append([row['true_relation'], row['sent_num'], word_gap, words, pos, phrase_path, combo])
+            f_vector.extend([row['true_relation'],
+                             row['sent_num'],
+                             word_gap,
+                             row['rel_type'],
+                             row['type1'],
+                             row['type2']])
+
+            # now add the features for each part of text
+            f_vector.extend(part_feature_vectors(eval(row['before_tags']), stopwords, False))
+            f_vector.extend(between_features)
+            f_vector.extend(part_feature_vectors(eval(row['after_tags']), stopwords, False))
+
+            # now add whole vector to set
+            feature_vectors.append(f_vector)
 
     return feature_vectors
 
+
 if __name__ == '__main__':
-    #tagging()
-    generate_features()
+    tagging()
+    #generate_features()

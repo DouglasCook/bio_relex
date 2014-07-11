@@ -1,7 +1,7 @@
 import os
 import csv
 import pickle
-import xml.etree.cElementTree as ET     # python XML manipulation library, C version because it's way faster!
+import xml.etree.cElementTree as ET  # python XML manipulation library, C version because it's way faster!
 
 import nltk.tokenize.punkt as punkt
 
@@ -58,7 +58,7 @@ def abstracts_to_csv():
             title = tree.findtext('.//ArticleTitle')
             nodes = tree.findall('.//AbstractText')
 
-            #abstract = ' '.join([e.text for e in tree.findall('.//AbstractText')])
+            # abstract = ' '.join([e.text for e in tree.findall('.//AbstractText')])
             #text = title + ' ' + abstract
 
             # problems arise here if the abstract is in several parts eg method, conclusion etc
@@ -130,7 +130,7 @@ def relations_to_dict():
             relation_dict[pid] = r_dict
 
     # pickle it
-    #print relation_dict['16950808']
+    # print relation_dict['16950808']
     pickle.dump(relation_dict, open('relation_dict.p', 'wb'))
 
 
@@ -157,15 +157,36 @@ def create_output_row(relations, row, i, length):
         end2 = relations['end1'][i] - length
         type2 = relations['type1'][i]
 
+    # the entities themselves
     e1 = sent[start1:end1]
     e2 = sent[start2:end2]
+
+    # relation information
     rel = relations['true_relation'][i]
     rel_type = relations['rel_type'][i]
-    between = sent[end1:start2]
+
+    # parts of the sentence
+    between = sent[end1 + 1:start2].strip()
+    before = sent[:start1].strip()
+    after = sent[end2 + 1:].strip()
 
     # need to re-encode everything as utf-8 ffs
-    return [row['id'], row['sent_num'], rel, rel_type, e1.encode('utf-8'), e2.encode('utf-8'), type1.encode('utf-8'),
-            type2.encode('utf-8'), start1, end1, start2, end2, sent.encode('utf-8'), between.encode('utf-8')]
+    return [row['id'],
+            row['sent_num'],
+            rel,
+            rel_type,
+            e1.encode('utf-8'),
+            e2.encode('utf-8'),
+            type1.encode('utf-8'),
+            type2.encode('utf-8'),
+            start1,
+            end1,
+            start2,
+            end2,
+            sent.encode('utf-8'),
+            before.encode('utf-8'),
+            between.encode('utf-8'),
+            after.encode('utf-8')]
 
 
 def create_input_file():
@@ -181,13 +202,28 @@ def create_input_file():
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
-            csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.writer(csv_out, ['pid', 'sent_num', 'true_relation', 'rel_type', 'e1', 'e2', 'type1',
-                                              'type2', 'start1', 'end1', 'start2', 'end2', 'sent_num', 'sentence',
-                                              'between'], delimiter=',')
 
-            csv_writer.writerow(['pid', 'sent_num', 'true_relation', 'rel_type', 'e1', 'e2', 'type1', 'type2',
-                                 'start1', 'end1', 'start2', 'end2', 'sent_num', 'sentence', 'between'])
+            # set up columns here so they are easier to play around with
+            cols = ['pid',
+                    'sent_num',
+                    'true_relation',
+                    'rel_type',
+                    'e1',
+                    'e2',
+                    'type1',
+                    'type2',
+                    'start1',
+                    'end1',
+                    'start2',
+                    'end2',
+                    'sentence',
+                    'before',
+                    'between',
+                    'after']
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.writer(csv_out, cols, delimiter=',')
+            csv_writer.writerow(cols)
+
             length, i = 0, 0
 
             # loop through all sentences
@@ -212,6 +248,6 @@ def create_input_file():
 
 
 if __name__ == '__main__':
-    #abstracts_to_csv()
+    # abstracts_to_csv()
     relations_to_dict()
     create_input_file()
