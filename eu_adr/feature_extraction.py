@@ -1,6 +1,7 @@
 import os
 import sys
 import csv
+import re
 
 import nltk
 
@@ -44,10 +45,15 @@ def pos_and_chunk_tags(text, chunker):
     """
     Return word, pos tag, chunk triples
     """
+    # TODO remove undesirable words or tokens here? also remove CONCLUSION, METHODS etc since they aren't important
     text = nltk.word_tokenize(text)
     # text = [b for b in between if b not in stopwords]
     tags = nltk.pos_tag(text)
     chunks = chunker.parse(tags)
+
+    # now want to remove any punctuation - maybe don't want to remove absolutely all punctuation?
+    # match returns true without needing to match whole string
+    chunks = [c for c in chunks if not re.match('\W', c[0])]
 
     return chunks
 
@@ -111,16 +117,17 @@ def part_feature_vectors(tags, stopwords, count):
     tags = [t for t in tags if t[0] not in stopwords and t[2] != 'O']
     word_gap = len(tags)
 
-    # WORDS
-    words = '"' + ' '.join([t[0] for t in tags]) + '"'
-    # POS
-    pos = '"' + ' '.join([t[1] for t in tags]) + '"'
+    # WORDS - remove numbers here, they should not be considered when finding most common words
+    #       - maybe also want to remove proper nouns?
+    words = '"' + ' '.join([t[0] for t in tags if not re.match('.?\d', t[0])]) + '"'
+    # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
+    pos = '"' + ' '.join([t[1] for t in tags if t[1] != '-NONE-']) + '"'
     # CHUNKS - only consider beginning tags of phrases
-    phrases = [t[2] for t in tags if t[2] is not None and t[2][0] == 'B']
+    phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
     # slice here to remove 'B-'
     phrase_path = '"' + '-'.join([p[2:] for p in phrases]) + '"'
     # COMBO - combination of tag and phrase type
-    combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2] is not None]) + '"'
+    combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]) + '"'
 
     # count number of each type of phrase
     nps = sum(1 for p in phrases if p == 'B-NP')
