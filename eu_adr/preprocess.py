@@ -138,7 +138,8 @@ def create_output_row(relations, row, i, length):
     """
     Generate row to be written to csv with entities located
     """
-    # TODO sort out the accents - unicode nonsense
+    # TODO sort out the accents
+    # can use unidecode module but this creates problems with other sentences eg 16950808 Sjorsen's disease
     sent = unicode(row['text'], 'utf-8')
 
     # want first first entity to be that which appears first in text
@@ -175,18 +176,18 @@ def create_output_row(relations, row, i, length):
             row['sent_num'],
             rel,
             rel_type,
-            e1.encode('utf-8'),
-            e2.encode('utf-8'),
-            type1.encode('utf-8'),
-            type2.encode('utf-8'),
+            e1,
+            e2,
+            type1,
+            type2,
             start1,
             end1,
             start2,
             end2,
-            sent.encode('utf-8'),
-            before.encode('utf-8'),
-            between.encode('utf-8'),
-            after.encode('utf-8')]
+            sent,
+            before,
+            between,
+            after]
 
 
 def create_input_file():
@@ -248,6 +249,6 @@ def create_input_file():
 
 
 if __name__ == '__main__':
-    # abstracts_to_csv()
-    relations_to_dict()
+    abstracts_to_csv()
+    #relations_to_dict()
     create_input_file()

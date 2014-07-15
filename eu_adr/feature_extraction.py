@@ -41,7 +41,7 @@ def set_up_chunker():
     return BigramChunker(train_sents)
 
 
-def pos_and_chunk_tags(text, chunker):
+def pos_and_chunk_tags(text, chunker, stemmer=None):
     """
     Return word, pos tag, chunk triples
     """
@@ -55,21 +55,30 @@ def pos_and_chunk_tags(text, chunker):
     # match returns true without needing to match whole string
     chunks = [c for c in chunks if not re.match('\W', c[0])]
 
+    # stem words if requested - not sure about the encode decode nonsense...
+    if stemmer:
+        chunks = [c for c in chunks if not re.match('\W', c[0])]
+        chunks = [(stemmer.stem(c[0].decode('utf-8')), c[1], c[2]) for c in chunks]
+        chunks = [(c[0].encode('utf-8'), c[1], c[2]) for c in chunks]
+
     return chunks
 
 
-def tagging():
+def tagging(stem=False):
     """
     Tags and chunk words between the two entities
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
     file_in = os.path.abspath(os.path.join(basepath, 'csv/relevant_sentences.csv'))
-    file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
+    if stem:
+        file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences_stemmed.csv'))
+    else:
+        file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
 
     chunker = set_up_chunker()
-    # don't think I actually want to remove stopwords?
-    # stopwords = nltk.corpus.stopwords.words('english')
+    if stem:
+        stemmer = nltk.SnowballStemmer('english')
 
     with open(file_in, 'rb') as csv_in:
         with open(file_out, 'wb') as csv_out:
@@ -101,12 +110,18 @@ def tagging():
                 # display progress bar
                 sys.stdout.write('.')
                 sys.stdout.flush()
-
-                row.update({'before_tags': pos_and_chunk_tags(row['before'], chunker)})
-                row.update({'between_tags': pos_and_chunk_tags(row['between'], chunker)})
-                row.update({'after_tags': pos_and_chunk_tags(row['after'], chunker)})
+                if stem:
+                    row.update({'before_tags': pos_and_chunk_tags(row['before'], chunker, stemmer)})
+                    row.update({'between_tags': pos_and_chunk_tags(row['between'], chunker, stemmer)})
+                    row.update({'after_tags': pos_and_chunk_tags(row['after'], chunker, stemmer)})
+                else:
+                    row.update({'before_tags': pos_and_chunk_tags(row['before'], chunker)})
+                    row.update({'between_tags': pos_and_chunk_tags(row['between'], chunker)})
+                    row.update({'after_tags': pos_and_chunk_tags(row['after'], chunker)})
                 csv_writer.writerow(row)
 
+
+# ----------------------- below is called from the Weka module -----------------------------
 
 def part_feature_vectors(tags, stopwords, count):
     """
@@ -119,13 +134,21 @@ def part_feature_vectors(tags, stopwords, count):
 
     # WORDS - remove numbers here, they should not be considered when finding most common words
     #       - maybe also want to remove proper nouns?
-    words = '"' + ' '.join([t[0] for t in tags if not re.match('.?\d', t[0])]) + '"'
+    words = [t[0] for t in tags if not re.match('.?\d', t[0])]
+    # zip up the list with offset list to create bigrams
+    bigrams = ['-'.join([b[0], b[1]]) for b in zip(words, words[1:])]
+
+    bigrams = '"' + ' '.join(bigrams) + '"'
+    words = '"' + ' '.join(words) + '"'
+
     # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
     pos = '"' + ' '.join([t[1] for t in tags if t[1] != '-NONE-']) + '"'
+
     # CHUNKS - only consider beginning tags of phrases
     phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
     # slice here to remove 'B-'
     phrase_path = '"' + '-'.join([p[2:] for p in phrases]) + '"'
+
     # COMBO - combination of tag and phrase type
     combo = '"' + ' '.join(['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]) + '"'
 
@@ -135,18 +158,21 @@ def part_feature_vectors(tags, stopwords, count):
     pps = sum(1 for p in phrases if p == 'B-PP')
 
     if count:
-        return [words, pos, phrase_path, combo, nps, vps, pps], word_gap
+        return [words, bigrams, pos, phrase_path, combo, nps, vps, pps], word_gap
     else:
-        return [words, pos, phrase_path, combo, nps, vps, pps]
+        return [words, bigrams, pos, phrase_path, combo, nps, vps, pps]
 
 
-def generate_features():
+def generate_features(stem=False):
     """
     Create basic feature vector for each record
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
+    if stem:
+        file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences_stemmed.csv'))
+    else:
+        file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
 
     feature_vectors = []
     stopwords = nltk.corpus.stopwords.words('english')
@@ -179,5 +205,6 @@ def generate_features():
 
 
 if __name__ == '__main__':
-    tagging()
+    tagging(False)
+    #tagging(False)
     #generate_features()

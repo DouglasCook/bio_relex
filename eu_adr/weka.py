@@ -31,7 +31,7 @@ def add_arff_data(filepath, data):
             f.write(', '.join(vector) + '\n')
 
 
-def write_file(f_name):
+def write_file(f_name, stem=False):
     """
     Step 4 in the pipeline so far...
     Write the weka file
@@ -49,6 +49,7 @@ def write_file(f_name):
                                      ['type2', '{Drug, Disorder, Target}'],
                                      # before first entity
                                      ['bef_words', 'STRING'],
+                                     ['bef_bigrams', 'STRING'],
                                      ['bef_pos_tags', 'STRING'],
                                      ['bef_phrase_path', 'STRING'],
                                      ['bef_combo', 'STRING'],
@@ -57,6 +58,7 @@ def write_file(f_name):
                                      ['bef_pp_count', 'NUMERIC'],
                                      # between entities
                                      ['bet_words', 'STRING'],
+                                     ['bet_bigrams', 'STRING'],
                                      ['bet_pos_tags', 'STRING'],
                                      ['bet_phrase_path', 'STRING'],
                                      ['bet_combo', 'STRING'],
@@ -65,6 +67,7 @@ def write_file(f_name):
                                      ['bet_pp_count', 'NUMERIC'],
                                      # after second entity
                                      ['aft_words', 'STRING'],
+                                     ['aft_bigrams', 'STRING'],
                                      ['aft_pos_tags', 'STRING'],
                                      ['aft_phrase_path', 'STRING'],
                                      ['aft_combo', 'STRING'],
@@ -72,9 +75,13 @@ def write_file(f_name):
                                      ['aft_vp_count', 'NUMERIC'],
                                      ['aft_pp_count', 'NUMERIC']])
     # add the data
-    add_arff_data(file_out, feature_extraction.generate_features())
+    if stem:
+        add_arff_data(file_out, feature_extraction.generate_features(True))
+    else:
+        add_arff_data(file_out, feature_extraction.generate_features())
 
 
 if __name__ == '__main__':
     #file_name = raw_input('Enter file name ')
     write_file('test')
+    write_file('test_stemmed', True)
