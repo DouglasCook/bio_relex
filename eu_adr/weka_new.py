@@ -1,6 +1,6 @@
 import os
 
-import feature_extraction_drug_disorder
+import feature_extraction_new
 
 
 def create_arff(filepath, relation, attributes):
@@ -37,8 +37,7 @@ def write_file(f_name, stem=False):
     Write the weka file
     """
     # want to be able to save to different files easily
-    basepath = os.path.dirname(__file__)
-    file_out = os.path.abspath(os.path.join(basepath, 'WEKA/' + f_name + '.arff'))
+    file_out = 'WEKA/' + f_name + '.arff'
 
     # write the header stuff
     create_arff(file_out, 'eu-adr', [['true_relation', '{True, False}'],
@@ -74,12 +73,12 @@ def write_file(f_name, stem=False):
                                      ['aft_pp_count', 'NUMERIC']])
     # add the data
     if stem:
-        add_arff_data(file_out, feature_extraction_drug_disorder.generate_features(True))
+        add_arff_data(file_out, feature_extraction_new.generate_features(True))
     else:
-        add_arff_data(file_out, feature_extraction_drug_disorder.generate_features())
+        add_arff_data(file_out, feature_extraction_new.generate_features())
 
 
 if __name__ == '__main__':
     #file_name = raw_input('Enter file name ')
-    #write_file('test')
-    write_file('test_stemmed', True)
+    write_file('test')
+    write_file('test_stemmed', stem=True)

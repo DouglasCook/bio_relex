@@ -68,12 +68,11 @@ def tagging(filename, stem=False, new_file=False):
     Tags and chunk words between the two entities
     """
     # set filepath to input
-    basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, 'csv', filename))
+    file_in = 'csv/' + filename
     if stem:
-        file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences_stemmed.csv'))
+        file_out = 'csv/tagged_sentences_stemmed.csv'
     else:
-        file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
+        file_out = 'csv/tagged_sentences.csv'
 
     chunker = set_up_chunker()
     if stem:
@@ -172,11 +171,10 @@ def generate_features(stem=False):
     Create basic feature vector for each record
     """
     # set filepath to input
-    basepath = os.path.dirname(__file__)
     if stem:
-        file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences_stemmed.csv'))
+        file_in = 'csv/tagged_sentences_stemmed.csv'
     else:
-        file_in = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences.csv'))
+        file_in = 'csv/tagged_sentences.csv'
 
     feature_vectors = []
     stopwords = nltk.corpus.stopwords.words('english')
