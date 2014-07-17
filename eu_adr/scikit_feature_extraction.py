@@ -16,11 +16,11 @@ def generate_features():
         csv_reader = csv.DictReader(csv_in, delimiter=',')
 
         for row in csv_reader:
-            # add the class attribute to vector
+            # add the class attribute to vector - use opposite to bools so it looks like weka
             if eval(row['true_relation']):
-                class_vector.append(1)
-            else:
                 class_vector.append(0)
+            else:
+                class_vector.append(1)
 
             f_vector = {'type1': row['type1'], 'type2': row['type2']}
             # now add the features for each part of text
