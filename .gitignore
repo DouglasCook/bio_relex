@@ -11,4 +11,5 @@
 *.filter
 *.p
 *.model
+*.algo
 *.tif

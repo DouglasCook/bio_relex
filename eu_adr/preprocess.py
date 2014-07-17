@@ -248,7 +248,41 @@ def create_input_file():
                     length += len(row['text']) + 1
 
 
+def drug_disorder_only():
+    """
+    Extract drug-disorder relations from relevant sentences and leave the rest
+    """
+    with open('csv/relevant_sentences.csv', 'rb') as csv_in:
+        with open('csv/drug_disorder_only.csv', 'wb') as csv_out:
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            cols = ['pid',
+                    'true_relation',
+                    'e1',
+                    'e2',
+                    'type1',
+                    'type2',
+                    'start1',
+                    'end1',
+                    'start2',
+                    'end2',
+                    'sentence',
+                    'before',
+                    'between',
+                    'after']
+            csv_writer = csv.DictWriter(csv_out, cols, delimiter=',')
+            csv_writer.writeheader()
+
+            for row in csv_reader:
+                # if its a drug disorder relation
+                if row['type1'] in ['Drug', 'Disorder'] and row['type2'] in ['Drug', 'Disorder']:
+                    # remove extra fields not obtainable from biotext
+                    row.pop('rel_type')
+                    row.pop('sent_num')
+                    csv_writer.writerow(row)
+
+
 if __name__ == '__main__':
-    abstracts_to_csv()
+    #abstracts_to_csv()
     #relations_to_dict()
-    create_input_file()
+    #create_input_file()
+    drug_disorder_only()

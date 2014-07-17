@@ -28,7 +28,6 @@ class BigramChunker(nltk.ChunkParserI):
         tagged_pos_tags = self.tagger.tag(pos_tags)
         chunktags = [chunktag for (pos, chunktag) in tagged_pos_tags]
         conlltags = [(word, pos, chunktag) for ((word, pos), chunktag) in zip(sentence, chunktags)]
-        # return nltk.chunk.util.conlltags2tree(conlltags)
         return conlltags
 
 
@@ -64,13 +63,13 @@ def pos_and_chunk_tags(text, chunker, stemmer=None):
     return chunks
 
 
-def tagging(stem=False):
+def tagging(filename, stem=False, new_file=False):
     """
     Tags and chunk words between the two entities
     """
     # set filepath to input
     basepath = os.path.dirname(__file__)
-    file_in = os.path.abspath(os.path.join(basepath, 'csv/relevant_sentences.csv'))
+    file_in = os.path.abspath(os.path.join(basepath, 'csv', filename))
     if stem:
         file_out = os.path.abspath(os.path.join(basepath, 'csv/tagged_sentences_stemmed.csv'))
     else:
@@ -80,13 +79,17 @@ def tagging(stem=False):
     if stem:
         stemmer = nltk.SnowballStemmer('english')
 
+    # want to append or write over depending on situation
+    if new_file:
+        mode = 'wb'
+    else:
+        mode = 'ab'
+
     with open(file_in, 'rb') as csv_in:
-        with open(file_out, 'wb') as csv_out:
+        with open(file_out, mode) as csv_out:
             # set columns here so they can be more easily changed
             cols = ['pid',
-                    'sent_num',
                     'true_relation',
-                    'rel_type',
                     'e1',
                     'e2',
                     'type1',
@@ -98,13 +101,13 @@ def tagging(stem=False):
                     'sentence',
                     'before_tags',
                     'between_tags',
-                    'after_tags',
-                    'before',  # TODO get rid of these, need to change the write cols instead of using update
-                    'between',
-                    'after']
+                    'after_tags']
             csv_reader = csv.DictReader(csv_in, delimiter=',')
-            csv_writer = csv.DictWriter(csv_out, cols, delimiter=',')
-            csv_writer.writeheader()
+            csv_writer = csv.DictWriter(csv_out, cols, delimiter=',', extrasaction='ignore')
+
+            # only write header when creating new file
+            if new_file:
+                csv_writer.writeheader()
 
             for row in csv_reader:
                 # display progress bar
@@ -118,6 +121,7 @@ def tagging(stem=False):
                     row.update({'before_tags': pos_and_chunk_tags(row['before'], chunker)})
                     row.update({'between_tags': pos_and_chunk_tags(row['between'], chunker)})
                     row.update({'after_tags': pos_and_chunk_tags(row['after'], chunker)})
+
                 csv_writer.writerow(row)
 
 
@@ -187,9 +191,7 @@ def generate_features(stem=False):
             # general features first
             # TODO add other features from reuters: phrase counts, stemmed words
             f_vector.extend([row['true_relation'],
-                             row['sent_num'],
                              word_gap,
-                             row['rel_type'],
                              row['type1'],
                              row['type2']])
 
@@ -205,6 +207,7 @@ def generate_features(stem=False):
 
 
 if __name__ == '__main__':
-    tagging(stem=True)
+    tagging('drug_disorder_only.csv', stem=True, new_file=True)
+    tagging('biotext.csv', stem=True, new_file=False)
     #tagging(False)
     #generate_features()
