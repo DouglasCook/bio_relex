@@ -15,9 +15,14 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn import preprocessing
 from sklearn.pipeline import Pipeline
 from sklearn.learning_curve import learning_curve
+from sklearn.grid_search import GridSearchCV
 
 
 def load_data(total_instances=0):
+    """
+    Load some part of data
+    Biotext instances are at end of data set so will be sliced off and balance set
+    """
     # use all instances if zero is passed in
     if total_instances == 0:
         features = pickle.load(open('pickles/scikit_data.p', 'rb'))
@@ -60,6 +65,7 @@ def cross_validated(total_instances=0):
                     #('svm', SVC(kernel='rbf', gamma=1))])
                     #('svm', SVC(kernel='sigmoid', gamma=10, coef0=10))])
                     ('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=3))])
+    print clf.get_params()['svm']
 
     # TODO what is the first parameter here?
     # when using cross validation there is no need to manually train the model
@@ -88,6 +94,15 @@ def no_cross_validation(total_instances=0):
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
+    # split data into training and test sets
+    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, test_size=0.5,
+                                                                                         random_state=0)
+
+    # tune the parameters
+    best_estimator = tune_parameters(train_data, train_labels)
+    best_coef = best_estimator.named_steps['svm'].coef0
+    best_degree = best_estimator.named_steps['svm'].degree
+    best_gamma = best_estimator.named_steps['svm'].gamma
 
     # set up pipeline to normalise the data then build the model
     clf = Pipeline([('scaler', preprocessing.Normalizer()),
@@ -95,10 +110,9 @@ def no_cross_validation(total_instances=0):
                     #('svm', SVC(kernel='linear'))])
                     #('svm', SVC(kernel='rbf', gamma=1))])
                     #('svm', SVC(kernel='sigmoid', gamma=10, coef0=10))])
-                    ('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=2))])
-
-    # split data into training and test sets
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, test_size=0.2)
+                    #('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=2))])
+                    ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=best_gamma,
+                                class_weight='auto', cache_size=1000))])
     clf.fit(train_data, train_labels)
 
     # classify the test data
@@ -122,28 +136,63 @@ def learning_curves(total_instances=0):
     # set up pipeline to normalise the data then build the model
     # TODO do I want normalise all of the features?
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    #('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=3))])
-                    ('svm', SVC(kernel='linear'))])
+                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
+                    #('svm', SVC(kernel='linear'))])
 
-    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True)
+    cv = cross_validation.StratifiedKFold(labels, n_folds=20, shuffle=True)
 
     # why does this always return results in the same pattern??? something fishy is going on
+    # something weird happening with the recall
     sizes, t_scores, v_scores = learning_curve(clf, data, labels,
-                                               train_sizes=np.array([0.4, 0.5, 0.6, 0.7, 0.8, 0.9]),
+                                               train_sizes=np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8]),
                                                cv=cv, scoring='f1', n_jobs=-1)
 
+    train_results = np.array([np.mean(t_scores[i]) for i in range(len(t_scores))])
+    valid_results = np.array([np.mean(v_scores[i]) for i in range(len(v_scores))])
+    '''
     # define new set of points to be used to smooth the plots
     x_new = np.linspace(sizes.min(), sizes.max())
-    training_results = np.array([np.mean(t_scores[i]) for i in range(len(t_scores))])
     training_smooth = spline(sizes, training_results, x_new)
-    validation_results = np.array([np.mean(v_scores[i]) for i in range(len(v_scores))])
     validation_smooth = spline(sizes, validation_results, x_new)
-
     #plt.plot(sizes, validation_results)
     plt.plot(x_new, validation_smooth)
     #plt.plot(sizes, training_results)
     plt.plot(x_new, training_smooth)
+    '''
+    # instead lets fit a polynomial of degree ? as this should give a better impression!
+    valid_coefs = np.polyfit(sizes, valid_results, 4)
+    train_coefs = np.polyfit(sizes, train_results, 4)
+    x_new = np.linspace(sizes.min(), sizes.max())
+    valid_new = np.polyval(valid_coefs, x_new)
+    train_new = np.polyval(train_coefs, x_new)
+    plt.plot(x_new, valid_new)
+    plt.plot(x_new, train_new)
+    plt.plot(sizes, train_results)
+    plt.plot(sizes, valid_results)
+
     plt.show()
+
+
+def tune_parameters(data, labels):
+    """
+    Tune the parameters using exhaustive grid search
+    """
+    # set cv here, why not
+    cv = cross_validation.StratifiedKFold(labels, n_folds=5, shuffle=True, random_state=0)
+
+    pipeline = Pipeline([('scaler', preprocessing.Normalizer()),
+                         ('svm', SVC(kernel='poly', gamma=1, class_weight='auto', cache_size=1000))])
+
+    # can test multiple kernels as well if desired
+    #param_grid = [{'kernel': 'poly', 'coef0': [1, 5, 10, 20], 'degree': [2, 3, 4, 5, 10]}]
+    param_grid = [{'svm__coef0': [1, 2, 3, 4, 5], 'svm__degree': [2, 3, 4, 5]}]
+    clf = GridSearchCV(pipeline, param_grid, n_jobs=-1, cv=cv)
+    clf.fit(data, labels)
+
+    print 'best parameters found:'
+    print clf.best_estimator_
+    return clf.best_estimator_
+
 
 if __name__ == '__main__':
     #no_cross_validation(1150)
