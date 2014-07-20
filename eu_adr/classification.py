@@ -23,6 +23,7 @@ def load_data(total_instances=0):
     Load some part of data
     Biotext instances are at end of data set so will be sliced off and balance set
     """
+    # TODO slice off a random part of the biotext examples?
     # use all instances if zero is passed in
     if total_instances == 0:
         features = pickle.load(open('pickles/scikit_data.p', 'rb'))
@@ -64,7 +65,7 @@ def cross_validated(total_instances=0):
                     #('svm', SVC(kernel='linear', C=2.5))])
                     #('svm', SVC(kernel='rbf', gamma=1))])
                     #('svm', SVC(kernel='sigmoid', gamma=10, coef0=10))])
-                    ('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=3))])
+                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, class_weight='auto', cache_size=1000))])
     print clf.get_params()['svm']
 
     # TODO what is the first parameter here?
@@ -134,7 +135,6 @@ def learning_curves(total_instances=0):
     data = vec.fit_transform(features).toarray()
 
     # set up pipeline to normalise the data then build the model
-    # TODO do I want normalise all of the features?
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
@@ -142,7 +142,7 @@ def learning_curves(total_instances=0):
     cv = cross_validation.StratifiedKFold(labels, n_folds=20, shuffle=True)
 
     # why does this always return results in the same pattern??? something fishy is going on
-    # something weird happening with the recall
+    # think that including 0.9 ends up in downward slope at the end
     sizes, t_scores, v_scores = learning_curve(clf, data, labels,
                                                train_sizes=np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8]),
                                                cv=cv, scoring='f1', n_jobs=-1)
@@ -160,15 +160,25 @@ def learning_curves(total_instances=0):
     plt.plot(x_new, training_smooth)
     '''
     # instead lets fit a polynomial of degree ? as this should give a better impression!
-    valid_coefs = np.polyfit(sizes, valid_results, 4)
-    train_coefs = np.polyfit(sizes, train_results, 4)
+    valid_coefs = np.polyfit(sizes, valid_results, deg=5)
+    train_coefs = np.polyfit(sizes, train_results, deg=5)
     x_new = np.linspace(sizes.min(), sizes.max())
     valid_new = np.polyval(valid_coefs, x_new)
     train_new = np.polyval(train_coefs, x_new)
+
+    # plot the raw points and the fitted curves
     plt.plot(x_new, valid_new)
     plt.plot(x_new, train_new)
     plt.plot(sizes, train_results)
     plt.plot(sizes, valid_results)
+
+    # TODO add labels to curves
+    kernel = str(clf.named_steps['svm'].get_params()['kernel'])
+    coef = str(clf.named_steps['svm'].get_params()['coef0'])
+    degree = str(clf.named_steps['svm'].get_params()['degree'])
+    plt.title('kernel: ' + kernel + ', degree: ' + degree + ', coef: ' + coef)
+    plt.xlabel('training_instances')
+    plt.ylabel('f_score')
 
     plt.show()
 
