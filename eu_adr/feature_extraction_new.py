@@ -88,6 +88,7 @@ def tagging(filename, stem=False, new_file=False):
         with open(file_out, mode) as csv_out:
             # set columns here so they can be more easily changed
             cols = ['pid',
+                    'sent_num',
                     'true_relation',
                     'e1',
                     'e2',

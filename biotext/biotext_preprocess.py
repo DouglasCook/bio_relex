@@ -41,6 +41,7 @@ def entity_extraction():
         with open('csv/sentences_entities.csv', 'wb')as csv_out:
             csv_reader = csv.reader(csv_in, delimiter=',')
             cols = ['pid',
+                    'sent_num',
                     'true_relation',
                     'e1',
                     'e2',
@@ -87,6 +88,7 @@ def entity_extraction():
                     after = sent[end2 + 1:].strip()
 
                     dict_out = {'pid': row_id,
+                                'sent_num': 0,  # this defaults to zero since they are only single sentences
                                 'true_relation': 'True',
                                 'e1': e1,
                                 'e2': e2,

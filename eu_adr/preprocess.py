@@ -178,6 +178,7 @@ def drug_disorder_only():
         with open('csv/drug_disorder_only.csv', 'wb') as csv_out:
             csv_reader = csv.DictReader(csv_in, delimiter=',')
             cols = ['pid',
+                    'sent_num',
                     'true_relation',
                     'e1',
                     'e2',
@@ -199,12 +200,11 @@ def drug_disorder_only():
                 if row['type1'] in ['Drug', 'Disorder'] and row['type2'] in ['Drug', 'Disorder']:
                     # remove extra fields not obtainable from biotext
                     row.pop('rel_type')
-                    row.pop('sent_num')
                     csv_writer.writerow(row)
 
 
 if __name__ == '__main__':
     #abstracts_to_csv()
     #relations_to_dict()
-    #create_input_file()
+    create_input_file()
     drug_disorder_only()

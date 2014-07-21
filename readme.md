@@ -9,7 +9,12 @@ Only need GCC if it't not on the VM (for whatever bizarre reason...)
 * `sudo apt-get GCC`
 * `sudo apt-get python-pip`
 * `sudo apt-get install build-essential python-dev`
+* `sudo apt-get build-dep python-numpy python-scipy`
 * `sudo pip install -U numpy`
+* `sudo pip install -U scipy`
+* `sudo pip install -U scikit-learn`
+* `sudo pip install -U biopython`
+* `sudo pip install -U Unidecode`
 * `sudo pip install -U pyyaml`
 
 ## Set up NLTK

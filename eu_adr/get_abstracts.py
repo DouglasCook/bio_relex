@@ -121,7 +121,7 @@ def xml_to_csv():
 
             for i, s in enumerate(sentences):
                 # dict comprehension here to hack the unicode into csv writer
-                dict_row = {'id': pubmed_id, 'sent_num': i, 'text': s.encode('utf-8')}
+                dict_row = {'id': pubmed_id, 'sent_num': i, 'text': s}
                 csv_writer.writerow(dict_row)
 
 
