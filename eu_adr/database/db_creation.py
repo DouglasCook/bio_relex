@@ -19,7 +19,8 @@ def create_tables():
         cursor.execute('''CREATE TABLE sentences(sent_id INTEGER PRIMARY KEY,
                                                  pubmed_id INTEGER,
                                                  sent_num INTEGER,
-                                                 sentence TEXT);''')
+                                                 sentence TEXT,
+                                                 source TEXT);''')
 
         # table for the relations
         cursor.execute('''CREATE TABLE relations(rel_id INTEGER PRIMARY KEY,
@@ -66,9 +67,14 @@ def populate_sentences():
             for row in csv_reader:
                 # this isn't a great way to do it but since the spreadsheet is ordered it will work
                 if row['pid'] != pid or row['sent_num'] != sent_num:
-                    cursor.execute('INSERT INTO sentences VALUES (NULL, ?, ?, ?);',
+                    # set the source, this should make it easier to query new records later
+                    if eval(row['pid']) < 1000:
+                        src = 'Biotext'
+                    else:
+                        src = 'EU-ADR'
+                    cursor.execute('INSERT INTO sentences VALUES (NULL, ?, ?, ?, ?);',
                                    # sentences saved in utf-8 but sqlite wants unicode -> need to decode
-                                   (row['pid'], row['sent_num'], row['sentence'].decode('utf-8')))
+                                   (row['pid'], row['sent_num'], row['sentence'].decode('utf-8'), src))
                     db.commit()
                 pid = row['pid']
                 sent_num = row['sent_num']
@@ -127,7 +133,7 @@ def populate_decisions():
                                         1 as annotator_id,
                                         true_rel
                                  FROM relations NATURAL JOIN SENTENCES
-                                 WHERE pubmed_id < 1000;''')
+                                 WHERE SENTENCES.source = 'Biotext';''')
 
         # now add eu-adr records
         cursor.execute('''INSERT INTO decisions
@@ -135,7 +141,7 @@ def populate_decisions():
                                         2 as annotator_id,
                                         true_rel
                                  FROM relations NATURAL JOIN sentences
-                                 WHERE pubmed_id > 1000;''')
+                                 WHERE SENTENCES.source = 'EU-ADR';''')
 
 
 def initial_setup():

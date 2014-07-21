@@ -1,23 +1,28 @@
 import csv
 import nltk
 import pickle
+import sqlite3
 
 
 def generate_features():
     """
     Create basic feature vector for each record
     """
-    file_in = 'csv/tagged_sentences_stemmed.csv'
     feature_vectors = []
     class_vector = []
     stopwords = nltk.corpus.stopwords.words('english')
 
-    with open(file_in, 'rb') as csv_in:
-        csv_reader = csv.DictReader(csv_in, delimiter=',')
+    with sqlite3.connect('database/relex.db') as db:
+        # using Row as row factory means can reference fields by name instead of index
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+        # want to create features for all relations in db, training test split will be done by scikit-learn
+        cursor.execute('SELECT * FROM relations;')
 
-        for row in csv_reader:
+        # cursor acts as an iterator, no need to fetch the rows
+        for row in cursor:
             # add the class attribute to vector - use opposite to bools so it looks like weka
-            if eval(row['true_relation']):
+            if eval(row['true_rel']):
                 class_vector.append(0)
             else:
                 class_vector.append(1)

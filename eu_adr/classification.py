@@ -139,12 +139,13 @@ def learning_curves(total_instances=0):
                     ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
 
-    cv = cross_validation.StratifiedKFold(labels, n_folds=20, shuffle=True)
+    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True)
 
     # why does this always return results in the same pattern??? something fishy is going on
     # think that including 0.9 ends up in downward slope at the end
     sizes, t_scores, v_scores = learning_curve(clf, data, labels,
-                                               train_sizes=np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8]),
+                                               train_sizes=np.array([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7,
+                                                                     0.75, 0.8, 0.85, 0.9]),
                                                cv=cv, scoring='f1', n_jobs=-1)
 
     train_results = np.array([np.mean(t_scores[i]) for i in range(len(t_scores))])
@@ -160,8 +161,8 @@ def learning_curves(total_instances=0):
     plt.plot(x_new, training_smooth)
     '''
     # instead lets fit a polynomial of degree ? as this should give a better impression!
-    valid_coefs = np.polyfit(sizes, valid_results, deg=5)
-    train_coefs = np.polyfit(sizes, train_results, deg=5)
+    valid_coefs = np.polyfit(sizes, valid_results, deg=3)
+    train_coefs = np.polyfit(sizes, train_results, deg=3)
     x_new = np.linspace(sizes.min(), sizes.max())
     valid_new = np.polyval(valid_coefs, x_new)
     train_new = np.polyval(train_coefs, x_new)

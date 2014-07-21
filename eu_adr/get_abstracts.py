@@ -179,6 +179,7 @@ def medline_to_csv():
             with open(f, 'rb') as f_in:
                 record = Medline.read(f_in)
                 #print help(record)
+                # use medline parser to extract relevant data from the file
                 pid = record['PMID']
                 text = record['TI'] + ' ' + record['AB']
 

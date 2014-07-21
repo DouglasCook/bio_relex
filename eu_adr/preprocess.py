@@ -8,7 +8,7 @@ def relations_to_dict():
     Put all relations from EU-ADR corpus into dictionary to pickle
     """
     # load pubmed ids
-    pubmed_ids = pickle.load(open('pubmed_ids.p', 'rb'))
+    pubmed_ids = pickle.load(open('eu-adr_ids.p', 'rb'))
     basepath = os.path.dirname(__file__)
 
     relation_dict = {}
