@@ -26,6 +26,7 @@ def create_tables():
         cursor.execute('''CREATE TABLE relations(rel_id INTEGER PRIMARY KEY,
                                                  sent_id INTEGER,
                                                  true_rel BOOL,
+                                                 bad_ner BOOL,
                                                  entity1 TEXT,
                                                  type1 TEXT,
                                                  start1 TEXT,
@@ -46,7 +47,7 @@ def create_tables():
         # table for annotators decision
         cursor.execute('''CREATE TABLE decisions(rel_id INTEGER,
                                                  annotator_id INTEGER,
-                                                 decision BOOL,
+                                                 decision INTEGER,
                                                  PRIMARY KEY(rel_id, annotator_id),
                                                  FOREIGN KEY(rel_id) REFERENCES relations,
                                                  FOREIGN KEY(annotator_id) REFERENCES annotators);''')
@@ -103,8 +104,10 @@ def populate_relations():
                     print 'sent_num =', row['sent_num']
                     return 0
 
-                cursor.execute('INSERT INTO relations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
-                               (sent_id, row['true_relation'],
+                cursor.execute('INSERT INTO relations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
+                               (sent_id,
+                                row['true_relation'],
+                                0,  # this is the bad NER field, false for the original relations
                                 row['e1'].decode('utf-8'),
                                 row['type1'],
                                 row['start1'],
@@ -117,6 +120,19 @@ def populate_relations():
                                 row['between_tags'].decode('utf-8'),
                                 row['after_tags'].decode('utf-8')))
                 db.commit()
+
+
+def populate_annotators():
+    """
+    Populate the decisions table to record 'correct' annotations from the corpora
+    """
+    with sqlite3.connect('relex.db') as db:
+        cursor = db.cursor()
+
+        # this deals with the biotext entries, they have artificial pubmed ids all < 1000
+        # biotext annotator id is 1
+        cursor.execute('''INSERT INTO annotators
+                                 VALUES (1, 'Douglas'), (2, 'EU-ADR'), (3, 'Biotext');''')
 
 
 def populate_decisions():
@@ -151,7 +167,9 @@ def initial_setup():
     create_tables()
     populate_sentences()
     populate_relations()
-    populate_decisions()
+    populate_annotators()
+    # don't need to have the original decisions recorded here now there is source field in sentences
+    #populate_decisions()
 
 if __name__ == '__main__':
     #create_tables()
