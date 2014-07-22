@@ -2,18 +2,23 @@
 <html lang="en">
     <head>
         <title>Relation Extraction</title>
+        <style type="text/css">
+            #drug {color:blue}
+            #disorder{color:red}
+        </style>
     </head>
-    <body>
-        <p><strong>Sentence</strong>: {{sentence}}</p>
 
-        <p><strong>Classified as</strong>: {{classification}}</p>
+    <body>
+        <p><strong>Sentence</strong>: {{before}} <span id=drug>{{e1}}</span> {{between}} <span id=disorder>{{e2}}</span> {{after}}</p>
+
+        <p><strong>Classified as </strong>{{classification}}</p>
 
         <form action="/save" method="post">
             <p>Which of the below is the <strong>correct</strong> classification?<br>
-                <input type="radio" name="class" value="1" checked="true"> True<br>
-                <input type="radio" name="class" value="0"> False<br>
+                <input type="radio" name="class" value="1" checked = {{true_check}}> True<br>
+                <input type="radio" name="class" value="0" checked = {{false_check}}> False<br>
                 <input type="radio" name="class" value="2"> Incorrect entity recognition<br>
-                <input type="submit" value="Submit" onclick=""></p>
+                <input type="submit" value="Submit"></p>
         </form>
     </body>
 </html>

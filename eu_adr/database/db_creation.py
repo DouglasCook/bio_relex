@@ -12,7 +12,7 @@ def create_tables():
         # drop the tables
         cursor.execute('DROP TABLE sentences;')
         cursor.execute('DROP TABLE relations;')
-        cursor.execute('DROP TABLE annotators;')
+        cursor.execute('DROP TABLE users;')
         cursor.execute('DROP TABLE decisions;')
 
         # table for sentences themselves, don't know if this is necessary since the tags etc are per relation?
@@ -29,28 +29,29 @@ def create_tables():
                                                  bad_ner BOOL,
                                                  entity1 TEXT,
                                                  type1 TEXT,
-                                                 start1 TEXT,
-                                                 end1 TEXT,
+                                                 start1 INTEGER,
+                                                 end1 INTEGER,
                                                  entity2 TEXT,
                                                  type2 TEXT,
-                                                 start2 TEXT,
-                                                 end2 TEXT,
+                                                 start2 INTEGER,
+                                                 end2 INTEGER,
                                                  before_tags TEXT,
                                                  between_tags TEXT,
                                                  after_tags TEXT,
                                                  FOREIGN KEY(sent_id) REFERENCES sentences);''')
 
         # table for annotators
-        cursor.execute('''CREATE TABLE annotators(annotator_id INTEGER PRIMARY KEY,
-                                                  name TEXT);''')
+        cursor.execute('''CREATE TABLE users(user_id INTEGER PRIMARY KEY,
+                                             name TEXT,
+                                             type TEXT);''')
 
         # table for annotators decision
-        cursor.execute('''CREATE TABLE decisions(rel_id INTEGER,
-                                                 annotator_id INTEGER,
+        cursor.execute('''CREATE TABLE decisions(decision_id INTEGER PRIMARY KEY,
+                                                 rel_id INTEGER,
+                                                 user_id INTEGER,
                                                  decision INTEGER,
-                                                 PRIMARY KEY(rel_id, annotator_id),
                                                  FOREIGN KEY(rel_id) REFERENCES relations,
-                                                 FOREIGN KEY(annotator_id) REFERENCES annotators);''')
+                                                 FOREIGN KEY(user_id) REFERENCES users);''')
 
 
 def populate_sentences():
@@ -122,7 +123,7 @@ def populate_relations():
                 db.commit()
 
 
-def populate_annotators():
+def populate_users():
     """
     Populate the decisions table to record 'correct' annotations from the corpora
     """
@@ -131,8 +132,8 @@ def populate_annotators():
 
         # this deals with the biotext entries, they have artificial pubmed ids all < 1000
         # biotext annotator id is 1
-        cursor.execute('''INSERT INTO annotators
-                                 VALUES (1, 'Douglas'), (2, 'EU-ADR'), (3, 'Biotext');''')
+        cursor.execute('''INSERT INTO users
+                                 VALUES (0, 'Douglas', 'testing'), (1, 'Andrew', 'user');''')
 
 
 def populate_decisions():
@@ -167,7 +168,7 @@ def initial_setup():
     create_tables()
     populate_sentences()
     populate_relations()
-    populate_annotators()
+    populate_users()
     # don't need to have the original decisions recorded here now there is source field in sentences
     #populate_decisions()
 
