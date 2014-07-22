@@ -54,6 +54,16 @@ def create_tables():
                                                  FOREIGN KEY(user_id) REFERENCES users);''')
 
 
+def create_temp_sentences():
+    with sqlite3.connect('test.db') as db:
+        cursor = db.cursor()
+        cursor.execute('DROP TABLE relevant_sentences')
+        # table for annotators decision
+        cursor.execute('''CREATE TABLE relevant_sentences(sent_id INTEGER,
+                                                          entity_dict TEXT,
+                                                          FOREIGN KEY(sent_id) REFERENCES sentences);''')
+
+
 def populate_sentences():
     """
     Populate the sentences table with initial set of sentences from biotext and eu-adr corpora
@@ -77,7 +87,6 @@ def populate_sentences():
                     cursor.execute('INSERT INTO sentences VALUES (NULL, ?, ?, ?, ?);',
                                    # sentences saved in utf-8 but sqlite wants unicode -> need to decode
                                    (row['pid'], row['sent_num'], row['sentence'].decode('utf-8'), src))
-                    db.commit()
                 pid = row['pid']
                 sent_num = row['sent_num']
 
@@ -120,7 +129,6 @@ def populate_relations():
                                 row['before_tags'].decode('utf-8'),
                                 row['between_tags'].decode('utf-8'),
                                 row['after_tags'].decode('utf-8')))
-                db.commit()
 
 
 def populate_users():
@@ -177,4 +185,5 @@ if __name__ == '__main__':
     #populate_sentences()
     #populate_relations()
     #populate_decisions()
-    initial_setup()
+    #initial_setup()
+    create_temp_sentences()

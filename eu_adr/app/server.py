@@ -88,7 +88,6 @@ def store_decision(classification):
         cursor.execute('''INSERT into decisions
                           VALUES (NULL, ?, ?, ?)''',
                        (rel_id, user_id, classification))
-        db.commit()
 
 
 def split_sentences(sent, start1, end1, start2, end2):

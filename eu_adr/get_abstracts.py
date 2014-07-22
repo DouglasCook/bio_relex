@@ -3,12 +3,14 @@ import urllib2
 import pickle
 import csv
 import xml.etree.cElementTree as ET  # python XML manipulation library, C version because it's way faster!
+import sqlite3
 
 import nltk.tokenize.punkt as punkt
 
 from Bio import Entrez
 from Bio import Medline
 Entrez.email = 'dsc313@imperial.ac.uk'
+db_path = 'database/test.db'
 
 
 def scrape_pubmed():
@@ -190,9 +192,40 @@ def medline_to_csv():
                     csv_writer.writerow(dict_row)
 
 
+def medline_to_db():
+    """
+    Create one record per text using XML abstracts scraped from PubMed
+    """
+    sentence_splitter = set_up_tokenizer()
+    files = set(pickle.load(open('pickles/pubmed_records.p', 'rb')))
+
+    with sqlite3.connect(db_path) as db:
+        cursor = db.cursor()
+
+        # don't want to add the same sentence multiple times, this might not be best way to do it
+        cursor.execute('SELECT DISTINCT pubmed_id FROM sentences')
+        # using sets to hopefully speed things up
+        existing = {p[0] for p in cursor}
+        files = {f for f in files if f not in existing}
+        files = ['pubmed/' + str(f) + '.txt' for f in files]
+
+        for f in files:
+            with open(f, 'rb') as f_in:
+                record = Medline.read(f_in)
+                #print help(record)
+                # use medline parser to extract relevant data from the file
+                pid = record['PMID']
+                text = record['TI'] + ' ' + record['AB']
+
+                sentences = sentence_splitter.tokenize(text)
+                for i, s in enumerate(sentences):
+                    # dict comprehension here to hack the unicode into csv writer
+                    cursor.execute('''INSERT INTO sentences
+                                             VALUES (NULL, ?, ?, ?, ?);''', (pid, i, s, 'pubmed'))
+
 if __name__ == '__main__':
     #pubmed_query()
     #retrieve_abstracts()
-    medline_to_csv()
     #scrape_pubmed()
     #file_list()
+    medline_to_db()

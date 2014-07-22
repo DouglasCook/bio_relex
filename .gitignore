@@ -9,7 +9,6 @@
 *.ods
 *.arff
 *.filter
-*.p
 *.model
 *.algo
 *.tif
