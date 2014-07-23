@@ -5,25 +5,6 @@ from reuters_NER import ontologies_api_demo as ner
 db_path = 'database/test.db'
 
 
-def test():
-    with sqlite3.connect(db_path) as db:
-        db.row_factory = sqlite3.Row
-        cursor = db.cursor()
-
-        cursor.execute('''SELECT *
-                          FROM sentences
-                          WHERE source = 'pubmed';''')
-        for i in xrange(20):
-            for j in xrange(10):
-                row = cursor.fetchone()
-
-            print row['sentence']
-            raw_xml = ner.runOntologiesSearch(row['sentence'])
-            print raw_xml
-            print ner.summariseXml(raw_xml)
-            print '\n\n'
-
-
 def relevant_into_temp():
     """
     Populate temporary table with relevant sentences from pubmed query
@@ -46,17 +27,18 @@ def relevant_into_temp():
 
             # need at least two entities for a relation
             if len(entity_dict) > 1:
-                indication_present = False
-                action_present = False
+                disorder_present = False
+                treatment_present = False
 
+                # TODO may want to be certain that these are the only entities we are interested in
                 for key in entity_dict:
                     if entity_dict[key][0] == 'Indication':
-                        indication_present = True
-                    elif entity_dict[key][0] == 'Action':
-                        action_present = True
+                        disorder_present = True
+                    elif entity_dict[key][0] == 'Action' or entity_dict[key][0] == 'Drug':
+                        treatment_present = True
 
                     # if there is at least one action and one indication the sentence is relevant
-                    if indication_present and action_present:
+                    if disorder_present and treatment_present:
                         cursor.execute('''INSERT INTO relevant_sentences
                                                  VALUES (?, ?);''',
                                        (row['sent_id'], str(entity_dict)))
@@ -67,6 +49,31 @@ def relevant_into_temp():
                         break
 
 
+def tag_sentences():
+    """
+    Populate temporary table with relevant sentences from pubmed query
+    NEED TO DO THIS ON THE SERVER!
+    """
+    with sqlite3.connect(db_path) as db:
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+        cursor.execute('''SELECT *
+                          FROM relevant_sentences;''')
+        sentences = cursor.fetchall()
+
+        for row in sentences:
+            sent_id = row['sent_id']
+            print row['entity_dict']
+            entity_dict = eval(row['entity_dict'])
+            # create lists for disorders and treatments
+            disorders = [k for k in entity_dict if k[0] == 'Indication']
+            treatments = [k for k in entity_dict if k[0] in ['Action', 'Drug']]
+            print disorders
+            print treatments
+
+
 if __name__ == '__main__':
     #test()
-    relevant_into_temp()
+    #relevant_into_temp()
+    tag_sentences()

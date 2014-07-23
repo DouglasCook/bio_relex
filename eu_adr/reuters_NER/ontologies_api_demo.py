@@ -32,12 +32,11 @@ def summariseXml(apiOutput):
 
         try:
             for i in apiOutput.Entities.Entity:
-
-                #length = (i._end + 1) - i._start
-                e_type = i._type
+                # need to cast as strings here so they can be used later
+                e_type = str(i._type)
                 start = i._start
                 end = i._end
-                entity = i._originalForm
+                entity = str(i._originalForm)
 
                 matches[entity] = [e_type, start, end]
 
