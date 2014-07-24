@@ -4,16 +4,16 @@ import os.path  # need this to use relative filepaths
 import re  # regular expressions for extracting named entities
 
 import preprocessing
+from eu_adr import utility
 
 
 def pos_tags():
     """ Create new CSV containing all relevant sentences """
-
     # set filepath to input
-    basepath = os.path.dirname(__file__)
-    filepath = 'data/biotext/sentences_with_roles_and_relations.txt'
-    filepath = os.path.abspath(os.path.join(basepath, '..', '..', filepath))
-    file_out = os.path.abspath(os.path.join(basepath, '..', 'biotext/sentences_POS.csv'))
+    filepath = utility.build_filepath(__file__, '../../data/biotext/sentences_with_roles_and_relations.txt')
+    file_out = utility.build_filepath(__file__, '../biotext/sentences_POS.csv')
+    print filepath
+    print file_out
 
     with open(filepath, 'r') as f_in:
         with open(file_out, 'wb') as csv_out:
@@ -37,8 +37,11 @@ def entity_extraction():
     """
     Remove tags from sentences and record start and end points of entities
     """
-    with open('csv/sentences.csv', 'rb')as csv_in:
-        with open('csv/sentences_entities.csv', 'wb')as csv_out:
+    f_in = utility.build_filepath(__file__, 'csv/sentences.csv')
+    f_out = utility.build_filepath(__file__, 'csv/sentences_entities.csv')
+
+    with open(f_in, 'rb')as csv_in:
+        with open(f_out, 'wb')as csv_out:
             csv_reader = csv.reader(csv_in, delimiter=',')
             cols = ['pid',
                     'sent_num',
@@ -133,4 +136,5 @@ def locate_entities(e_type, sentence):
 
 
 if __name__ == '__main__':
-    entity_extraction()
+    pos_tags()
+    #entity_extraction()

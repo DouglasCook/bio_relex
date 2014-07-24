@@ -196,6 +196,7 @@ def medline_to_db():
     """
     Create one record per text using XML abstracts scraped from PubMed
     """
+    # TODO combine this with NER so only relevant sentences are written to the db
     sentence_splitter = set_up_tokenizer()
     files = set(pickle.load(open('pickles/pubmed_records.p', 'rb')))
 

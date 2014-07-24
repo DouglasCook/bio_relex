@@ -55,6 +55,9 @@ def create_tables():
 
 
 def create_temp_sentences():
+    """
+    Table to store relevant sentences from pubmed query before processing
+    """
     with sqlite3.connect('test.db') as db:
         cursor = db.cursor()
         cursor.execute('DROP TABLE relevant_sentences')
@@ -62,6 +65,20 @@ def create_temp_sentences():
         cursor.execute('''CREATE TABLE relevant_sentences(sent_id INTEGER,
                                                           entity_dict TEXT,
                                                           FOREIGN KEY(sent_id) REFERENCES sentences);''')
+
+
+def create_classifier_table():
+    """
+    Table to store training set used for each classifier
+    """
+    with sqlite3.connect('test.db') as db:
+        cursor = db.cursor()
+        cursor.execute('DROP TABLE classifier_data')
+        # table for annotators decision
+        cursor.execute('''CREATE TABLE classifier_data(clsf_id INTEGER,
+                                                       training_rel INTEGER,
+                                                       FOREIGN KEY(clsf_id) REFERENCES users(user_id),
+                                                       FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
 
 def populate_sentences():
@@ -186,4 +203,5 @@ if __name__ == '__main__':
     #populate_relations()
     #populate_decisions()
     #initial_setup()
-    create_temp_sentences()
+    #create_temp_sentences()
+    create_classifier_table()

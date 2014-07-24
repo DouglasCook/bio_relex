@@ -6,8 +6,15 @@ from flask import redirect
 
 import sqlite3
 
+
+# TODO exception catching / error redirects?
 app = Flask(__name__)
 app.secret_key = 'blahblahblah'
+
+# TODO fix package importing
+# for some reason this doesn't work... fuck knows why, it is probably not worth the bother
+#from .. import utility
+#db_path = utility.build_filepath(__file__, '../database/test.db')
 db_path = '../database/test.db'
 
 
@@ -90,7 +97,7 @@ def store_decision(classification):
                        (rel_id, user_id, classification))
 
 
-def split_sentences(sent, start1, end1, start2, end2):
+def split_sentence(sent, start1, end1, start2, end2):
     """
     Put divs around the entities so they will be highlighted on page
     """
@@ -121,8 +128,8 @@ def return_relation(rel_id):
                           WHERE relations.rel_id = ?;''', [rel_id])
 
         row = cursor.fetchone()
-        before, between, after = split_sentences(row['sentence'], row['start1'], row['end1'], row['start2'],
-                                                 row['end2'])
+        before, between, after = split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
+                                                row['end2'])
 
         return before, between, after, row['entity1'], row['entity2'], row['true_rel']
 

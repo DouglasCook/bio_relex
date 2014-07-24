@@ -18,7 +18,7 @@ from sklearn.learning_curve import learning_curve
 from sklearn.grid_search import GridSearchCV
 
 
-def load_data(total_instances=0):
+def load_data(eu_adr_only=False, total_instances=0):
     """
     Load some part of data
     Biotext instances are at end of data set so will be sliced off and balance set
@@ -26,8 +26,13 @@ def load_data(total_instances=0):
     # TODO slice off a random part of the biotext examples?
     # use all instances if zero is passed in
     if total_instances == 0:
-        features = pickle.load(open('pickles/scikit_data.p', 'rb'))
-        labels = np.array(pickle.load(open('pickles/scikit_target.p', 'rb')))
+        # if eu_adr is requested do not slice anything off
+        if eu_adr_only:
+            features = pickle.load(open('pickles/scikit_data_eu_adr_only.p', 'rb'))
+            labels = np.array(pickle.load(open('pickles/scikit_target_eu_adr_only.p', 'rb')))
+        else:
+            features = pickle.load(open('pickles/scikit_data.p', 'rb'))
+            labels = np.array(pickle.load(open('pickles/scikit_target.p', 'rb')))
     # otherwise slice number of instances requested, biotext ones are at end so will be cut off
     else:
         features = pickle.load(open('pickles/scikit_data.p', 'rb'))
@@ -124,11 +129,11 @@ def no_cross_validation(total_instances=0):
     print metrics.confusion_matrix(test_labels, predicted)
 
 
-def learning_curves(total_instances=0):
+def learning_curves(filepath, scoring, eu_adr_only=False, total_instances=0):
     """
     Plot learning curves of f-score for training and test data
     """
-    features, labels = load_data(total_instances)
+    features, labels = load_data(eu_adr_only, total_instances)
 
     # convert from dict into np array
     vec = DictVectorizer()
@@ -139,14 +144,14 @@ def learning_curves(total_instances=0):
                     ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
 
-    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True)
+    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True, random_state=50)
 
     # why does this always return results in the same pattern??? something fishy is going on
     # think that including 0.9 ends up in downward slope at the end
     sizes, t_scores, v_scores = learning_curve(clf, data, labels,
                                                train_sizes=np.array([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7,
                                                                      0.75, 0.8, 0.85, 0.9]),
-                                               cv=cv, scoring='f1', n_jobs=-1)
+                                               cv=cv, scoring=scoring, n_jobs=-1)
 
     train_results = np.array([np.mean(t_scores[i]) for i in range(len(t_scores))])
     valid_results = np.array([np.mean(v_scores[i]) for i in range(len(v_scores))])
@@ -181,7 +186,9 @@ def learning_curves(total_instances=0):
     plt.xlabel('training_instances')
     plt.ylabel('f_score')
 
-    plt.show()
+    #plt.show()
+    plt.savefig(filepath, format='tif')
+    plt.clf()
 
 
 def tune_parameters(data, labels):
@@ -205,7 +212,38 @@ def tune_parameters(data, labels):
     return clf.best_estimator_
 
 
+def make_curves():
+    '''
+    learning_curves('plots/eu_adr_only_f1.tif', 'f1', eu_adr_only=True)
+    print 'bam'
+    learning_curves('plots/eu_adr_only_accuracy.tif', 'accuracy', eu_adr_only=True)
+    print 'bam'
+    learning_curves('plots/eu_adr_only_precision.tif', 'precision', eu_adr_only=True)
+    print 'bam'
+    learning_curves('plots/eu_adr_only_recall.tif', 'recall', eu_adr_only=True)
+    print 'bam'
+    learning_curves('plots/all_f1.tif', 'f1', eu_adr_only=False)
+    print 'bam'
+    learning_curves('plots/all_accuracy.tif', 'accuracy', eu_adr_only=False)
+    print 'bam'
+    learning_curves('plots/all_precision.tif', 'precision', eu_adr_only=False)
+    print 'bam'
+    learning_curves('plots/all_recall.tif', 'recall', eu_adr_only=False)
+    print 'bam'
+    '''
+    learning_curves('plots/all_balanced_f1.tif', 'f1', eu_adr_only=False, total_instances=1150)
+    print 'bam'
+    learning_curves('plots/all_balanced_accuracy.tif', 'accuracy', eu_adr_only=False, total_instances=1150)
+    print 'bam'
+    learning_curves('plots/all_balanced_precision.tif', 'precision', eu_adr_only=False, total_instances=1150)
+    print 'bam'
+    learning_curves('plots/all_balanced_recall.tif', 'recall', eu_adr_only=False, total_instances=1150)
+    print 'bam'
+
+
 if __name__ == '__main__':
     #no_cross_validation(1150)
     #cross_validated(1150)
-    learning_curves(1150)
+    #learning_curves(total_instances=1150)
+    #learning_curves(eu_adr_only=True)
+    make_curves()
