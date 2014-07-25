@@ -1,3 +1,6 @@
+import random
+import sys
+
 from flask import Flask
 from flask import render_template
 from flask import request
@@ -5,7 +8,6 @@ from flask import session
 from flask import redirect
 
 import sqlite3
-
 
 # TODO exception catching / error redirects?
 app = Flask(__name__)
@@ -45,7 +47,10 @@ def login():
                                                          WHERE decisions.user_id = ?);''', [user_id])
 
         # create list of relations to classify to iterate through
-        session['rels_to_classify'] = [c[0] for c in cursor]
+        rels = [c[0] for c in cursor]
+        # TODO shuffle?
+        #random.shuffle(rels)
+        session['rels_to_classify'] = rels
         session['next_index'] = 0
 
     return redirect('/classify')
@@ -157,4 +162,8 @@ def get_user_list():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # set command line arg to 1 to go live
+    if int(sys.argv[1]) == 1:
+        app.run(host='0.0.0.0')
+    else:
+        app.run(debug=True)

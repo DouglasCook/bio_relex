@@ -29,7 +29,6 @@ def update_correct_classifications():
                                                      FROM decisions NATURAL JOIN users
                                                      WHERE decisions.decision != 2 AND
                                                      users.type != 'classifier');''')
-        print cursor.fetchall()
 
 
 def classify_remaining():
@@ -55,5 +54,5 @@ def classify_remaining():
 
 
 if __name__ == '__main__':
-    #classify_remaining()
     update_correct_classifications()
+    classify_remaining()
