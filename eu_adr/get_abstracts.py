@@ -152,6 +152,7 @@ def retrieve_abstracts():
     """
     Bring down abstracts from pubmed based on ids stored in pickle
     """
+    # TODO store all records returned by query and save a pointer to next one to download
     record = pickle.load(open('pickles/pubmed_records.p', 'rb'))
 
     for pubmed_id in record:
@@ -194,7 +195,7 @@ def medline_to_csv():
 
 def medline_to_db():
     """
-    Create one record per text using XML abstracts scraped from PubMed
+    Create one record per text using medline abstracts scraped from PubMed
     """
     # TODO combine this with NER so only relevant sentences are written to the db
     sentence_splitter = set_up_tokenizer()
@@ -203,7 +204,8 @@ def medline_to_db():
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
 
-        # don't want to add the same sentence multiple times, this might not be best way to do it
+        # don't want to add the same sentence multiple times, so get existing ones first
+        # this might not be best way to do it
         cursor.execute('SELECT DISTINCT pubmed_id FROM sentences')
         # using sets to hopefully speed things up
         existing = {p[0] for p in cursor}

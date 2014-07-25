@@ -36,13 +36,17 @@ def login():
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
-        # TODO later need to add WHERE relations.true_rel IS NULL so we don't reclassify things
-        cursor.execute('''SELECT min(rel_id) as next
+        # TODO change query dependent on active learning method eg decision function
+        cursor.execute('''SELECT rel_id
                           FROM relations
-                          WHERE relations.rel_id NOT IN (SELECT rel_id
+                          WHERE relations.true_rel IS NULL AND
+                                relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
-        session['next_relation'] = cursor.fetchone()['next']
+
+        # create list of relations to classify to iterate through
+        session['rels_to_classify'] = [c[0] for c in cursor]
+        session['next_index'] = 0
 
     return redirect('/classify')
 
@@ -52,20 +56,25 @@ def classify():
     """
     Display next relation to be classified
     """
-    next_rel = session['next_relation']
-    before, between, after, e1, e2, true_rel = return_relation(next_rel)
+    next_rel = session['rels_to_classify'][int(session['next_index'])]
+    before, between, after, e1, e2, prediction, type1 = return_relation(next_rel)
 
     # set radio button to pre check the classifiers prediction
-    # TODO why does this switch to false every time???
-    if true_rel:
-        true_check = 'true'
-        false_check = 'false'
+    if prediction:
+        pred = 'True'
+        true_check = True
     else:
-        true_check = 'false'
-        false_check = 'true'
+        pred = 'False'
+        true_check = False
 
-    return render_template('index.html', before=before, between=between, after=after, classification=true_rel,
-                           e1=e1, e2=e2, true_check=true_check, false_check=false_check)
+    # set correct colouring for drugs and disorders
+    if type1 == 'Drug':
+        drug_first = True
+    else:
+        drug_first = False
+
+    return render_template('index.html', before=before, between=between, after=after, classification=pred,
+                           e1=e1, e2=e2, true_check=true_check, drug_first=drug_first)
 
 
 @app.route('/save', methods=['POST'])
@@ -78,7 +87,7 @@ def record_decision():
     # TODO not sure if this will work properly, relations may not be ordered one by one?
     # may have to do a select min where rel_id not in decisions for this use
     # increment relation id
-    session['next_relation'] = int(session['next_relation']) + 1
+    session['next_index'] = int(session['next_index']) + 1
 
     return redirect('/classify')
 
@@ -87,7 +96,7 @@ def store_decision(classification):
     """
     Record the annotators classification
     """
-    rel_id = session['next_relation']
+    rel_id = session['rels_to_classify'][int(session['next_index'])]
     user_id = session['user_id']
 
     with sqlite3.connect(db_path) as db:
@@ -101,18 +110,16 @@ def split_sentence(sent, start1, end1, start2, end2):
     """
     Put divs around the entities so they will be highlighted on page
     """
-    return sent[:start1], sent[end1:start2], sent[end2:]
+    return sent[:start1], sent[end1 + 1:start2], sent[end2 + 1:]
 
 
 def return_relation(rel_id):
     """
-    Get relation from database - very basic for now, just select next one in list
+    Get potential relation from database
     """
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
-        # TODO only alter WHERE statement instead of repeating entire query
-        # no such thing as a stored procedure in sqlite... need to do everything here
         cursor.execute('''SELECT sentences.sentence,
                                  relations.entity1,
                                  relations.type1,
@@ -123,15 +130,19 @@ def return_relation(rel_id):
                                  relations.start2,
                                  relations.end2,
                                  relations.rel_id,
-                                 relations.true_rel
+                                 decisions.decision
                           FROM sentences NATURAL JOIN relations
-                          WHERE relations.rel_id = ?;''', [rel_id])
+                                         NATURAL JOIN decisions
+                          WHERE relations.rel_id = ? AND
+                                decisions.user_id = (SELECT max(user_id)
+                                                     FROM users
+                                                     WHERE type = 'classifier');''', [rel_id])
 
         row = cursor.fetchone()
         before, between, after = split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
                                                 row['end2'])
 
-        return before, between, after, row['entity1'], row['entity2'], row['true_rel']
+        return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1']
 
 
 def get_user_list():

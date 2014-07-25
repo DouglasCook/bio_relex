@@ -9,14 +9,25 @@
     </head>
 
     <body>
-        <p><strong>Sentence</strong>: {{before}}<span id=drug>{{e1}}</span>{{between}}<span id=disorder>{{e2}}</span>{{after}}</p>
+        <!-- highlight the entities based on type -->
+        {% if drug_first %}
+            <p><strong>Sentence</strong>: {{before}}<span id=drug>{{e1}}</span>{{between}}<span id=disorder>{{e2}}</span>{{after}}</p>
+        {% else %}
+            <p><strong>Sentence</strong>: {{before}}<span id=disorder>{{e1}}</span>{{between}}<span id=drug>{{e2}}</span>{{after}}</p>
+        {% endif %}
 
         <p><strong>Classified as </strong>{{classification}}</p>
 
         <form action="/save" method="post">
             <p>Which of the below is the <strong>correct</strong> classification?<br>
-                <input type="radio" name="class" value="1" checked = {{true_check}}> True<br>
-                <input type="radio" name="class" value="0" checked = {{false_check}}> False<br>
+                <!-- preselect the class predicted by classifier -->
+                {% if true_check %}
+                    <input type="radio" name="class" value="1" checked = "true"> True<br>
+                    <input type="radio" name="class" value="0"> False<br>
+                {% else %}
+                    <input type="radio" name="class" value="1"> True<br>
+                    <input type="radio" name="class" value="0" checked = "true"> False<br>
+                {% endif %}
                 <input type="radio" name="class" value="2"> Incorrect entity recognition<br>
                 <input type="submit" value="Submit"></p>
         </form>

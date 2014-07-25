@@ -58,6 +58,7 @@ def create_temp_sentences():
     """
     Table to store relevant sentences from pubmed query before processing
     """
+    # TODO rename this as temp
     with sqlite3.connect('test.db') as db:
         cursor = db.cursor()
         cursor.execute('DROP TABLE relevant_sentences')
