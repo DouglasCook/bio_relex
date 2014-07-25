@@ -1,7 +1,6 @@
 import sqlite3
 
-from tagging import TaggerChunker
-
+from tagger import TaggerChunker
 
 from reuters_NER import ontologies_api_demo as ner
 
@@ -45,9 +44,10 @@ def relevant_into_temp():
                         cursor.execute('''INSERT INTO relevant_sentences
                                                  VALUES (?, ?);''',
                                        (row['sent_id'], str(entity_dict)))
+                        # print just to see progress
                         print row['sent_id']
                         # committing here will slow things down but means can break and still have SOME data
-                        # slow down is negligible compared to calling NER engine
+                        # slow down is negligible in grand scheme of things
                         db.commit()
                         break
 
@@ -69,7 +69,7 @@ def add_to_relations():
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
-        # take everything from relevant sentences,
+        # take everything from relevant sentences that has not already been checked for relations
         cursor.execute('''SELECT relevant_sentences.*, sentences.sentence
                           FROM relevant_sentences NATURAL JOIN sentences
                           WHERE sent_id NOT IN (SELECT DISTINCT(sent_id)

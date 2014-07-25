@@ -52,11 +52,11 @@ def check_data_range(data):
     print np.mean(data)
 
 
-def cross_validated(total_instances=0):
+def cross_validated(eu_adr_only=False, total_instances=0):
     """
     Calculate stats using cross validations
     """
-    features, labels = load_data(total_instances)
+    features, labels = load_data(eu_adr_only=eu_adr_only, total_instances=total_instances)
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
@@ -246,4 +246,7 @@ if __name__ == '__main__':
     #cross_validated(1150)
     #learning_curves(total_instances=1150)
     #learning_curves(eu_adr_only=True)
-    make_curves()
+    #make_curves()
+    cross_validated(eu_adr_only=True, total_instances=0)
+    cross_validated(eu_adr_only=False, total_instances=0)
+    cross_validated(eu_adr_only=False, total_instances=1150)

@@ -38,6 +38,7 @@ def login():
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
+
         # TODO change query dependent on active learning method eg decision function
         cursor.execute('''SELECT rel_id
                           FROM relations
@@ -48,8 +49,8 @@ def login():
 
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
-        # TODO shuffle?
-        #random.shuffle(rels)
+        # TODO shuffling is one possible strategy, in order is another, distance from support vectors is another
+        random.shuffle(rels)
         session['rels_to_classify'] = rels
         session['next_index'] = 0
 
@@ -89,9 +90,7 @@ def record_decision():
     """
     # write decision to the database
     store_decision(request.form['class'])
-    # TODO not sure if this will work properly, relations may not be ordered one by one?
-    # may have to do a select min where rel_id not in decisions for this use
-    # increment relation id
+    # increment next relation index
     session['next_index'] = int(session['next_index']) + 1
 
     return redirect('/classify')
@@ -164,6 +163,6 @@ def get_user_list():
 if __name__ == '__main__':
     # set command line arg to 1 to go live
     if int(sys.argv[1]) == 1:
-        app.run(host='0.0.0.0')
+        app.run(host='0.0.0.0', port=55100)
     else:
         app.run(debug=True)

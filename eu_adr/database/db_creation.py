@@ -56,13 +56,13 @@ def create_tables():
 
 def create_temp_sentences():
     """
-    Table to store relevant sentences from pubmed query before processing
+    Table to store new sentences from pubmed query possibly containing relations (before they are processed)
     """
     # TODO rename this as temp
     with sqlite3.connect('test.db') as db:
         cursor = db.cursor()
         cursor.execute('DROP TABLE relevant_sentences')
-        # table for annotators decision
+        # table for new sentences containing possible relations
         cursor.execute('''CREATE TABLE relevant_sentences(sent_id INTEGER,
                                                           entity_dict TEXT,
                                                           FOREIGN KEY(sent_id) REFERENCES sentences);''')
@@ -99,9 +99,9 @@ def populate_sentences():
                 if row['pid'] != pid or row['sent_num'] != sent_num:
                     # set the source, this should make it easier to query new records later
                     if eval(row['pid']) < 1000:
-                        src = 'Biotext'
+                        src = 'biotext'
                     else:
-                        src = 'EU-ADR'
+                        src = 'eu-adr'
                     cursor.execute('INSERT INTO sentences VALUES (NULL, ?, ?, ?, ?);',
                                    # sentences saved in utf-8 but sqlite wants unicode -> need to decode
                                    (row['pid'], row['sent_num'], row['sentence'].decode('utf-8'), src))
