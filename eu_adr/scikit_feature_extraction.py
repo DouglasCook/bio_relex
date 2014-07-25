@@ -58,7 +58,9 @@ def generate_features(records, no_class=False):
                 else:
                     class_vector.append(0)
 
-        f_vector = {'type1': row['type1'], 'type2': row['type2']}
+        # don't think there's any need to have both types since one implies the other
+        #f_vector = {'type1': row['type1'], 'type2': row['type2']}
+        f_vector = {'type1': row['type1']}
         # now add the features for each part of text
         f_vector.update(part_feature_vectors(eval(row['before_tags']), stopwords, 'before'))
         f_vector.update(part_feature_vectors(eval(row['between_tags']), stopwords, 'between'))
@@ -102,7 +104,7 @@ def part_feature_vectors(tags, stopwords, which_set):
 
     # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
     pos = [t[1] for t in tags if t[1] != '-NONE-']
-    f_dict.update(counting_dict(pos))
+    f_dict.update(non_counting_dict(pos))
     #pos = '"' + ' '.join(pos) + '"'
 
     # CHUNKS - only consider beginning tags of phrases
@@ -113,7 +115,7 @@ def part_feature_vectors(tags, stopwords, which_set):
 
     # COMBO - combination of tag and phrase type
     combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]
-    f_dict.update(counting_dict(combo))
+    f_dict.update(non_counting_dict(combo))
     #combo = '"' + ' '.join(['-'.join(combo) + '"'
 
     # count number of each type of phrase
@@ -137,8 +139,10 @@ def word_check(words, which_set):
     else:
         stem_list = ['patient', 'studi']
 
+    stem_dict = {}
+    # don't need to do this since scikit does it for you
     # everything defaults to false
-    stem_dict = {stem: 0 for stem in stem_list}
+    #stem_dict = {stem: 0 for stem in stem_list}
 
     for stem in stem_list:
         # if the stem is found in the words set to true in dictionary
@@ -159,6 +163,18 @@ def counting_dict(tags):
         if t in c_dict.keys():
             c_dict[t] += 1
         else:
+            c_dict[t] = 1
+    return c_dict
+
+
+def non_counting_dict(tags):
+    """
+    Record counts of each tag present in tags and return as dictionary
+    """
+    c_dict = {}
+    for t in tags:
+        # if key exists add it to dict
+        if t not in c_dict.keys():
             c_dict[t] = 1
     return c_dict
 

@@ -94,15 +94,14 @@ def cross_validated(eu_adr_only=False, total_instances=0):
         log.write('finished: ' + str(datetime.datetime.now()) + '\n\n')
 
 
-def no_cross_validation(total_instances=0):
-    features, labels = load_data(total_instances)
+def no_cross_validation(eu_adr_only=False, total_instances=0):
+    features, labels = load_data(eu_adr_only=eu_adr_only, total_instances=total_instances)
 
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
     # split data into training and test sets
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, test_size=0.5,
-                                                                                         random_state=0)
+    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, test_size=0.5)
 
     # tune the parameters
     best_estimator = tune_parameters(train_data, train_labels)
@@ -196,7 +195,7 @@ def tune_parameters(data, labels):
     Tune the parameters using exhaustive grid search
     """
     # set cv here, why not
-    cv = cross_validation.StratifiedKFold(labels, n_folds=5, shuffle=True, random_state=0)
+    cv = cross_validation.StratifiedKFold(labels, n_folds=5, shuffle=True)
 
     pipeline = Pipeline([('scaler', preprocessing.Normalizer()),
                          ('svm', SVC(kernel='poly', gamma=1, class_weight='auto', cache_size=1000))])
@@ -241,12 +240,17 @@ def make_curves():
     print 'bam'
 
 
+def compare_datasets():
+    cross_validated(eu_adr_only=True, total_instances=0)
+    cross_validated(eu_adr_only=False, total_instances=0)
+    cross_validated(eu_adr_only=False, total_instances=1150)
+
+
 if __name__ == '__main__':
-    #no_cross_validation(1150)
+    #no_cross_validation(eu_adr_only=False, total_instances=1150)
     #cross_validated(1150)
     #learning_curves(total_instances=1150)
     #learning_curves(eu_adr_only=True)
     #make_curves()
-    cross_validated(eu_adr_only=True, total_instances=0)
-    cross_validated(eu_adr_only=False, total_instances=0)
-    cross_validated(eu_adr_only=False, total_instances=1150)
+    compare_datasets()
+
