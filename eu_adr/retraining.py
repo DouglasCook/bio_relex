@@ -59,13 +59,13 @@ def count_true_false_predicions():
     """
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff
-        db.row_factory = sqlite3.Row
+        db.row_factory = sqlite3.row
         cursor = db.cursor()
 
         # get latest classifier
-        cursor.execute('''SELECT max(user_id)
-                          FROM users
-                          WHERE type = 'classifier';''')
+        cursor.execute('''select max(user_id)
+                          from users
+                          where type = 'classifier';''')
         clsf_id = cursor.fetchone()[0]
 
         # count the relations
@@ -78,7 +78,20 @@ def count_true_false_predicions():
             print row[0], row[1]
 
 
+def delete_decisions():
+    """
+    Delete all decisions and related records
+    """
+    with sqlite3.connect(db_path) as db:
+        # need to return dictionary so it matches csv stuff
+        cursor = db.cursor()
+        cursor.execute('DELETE from decisions;')
+        cursor.execute('DELETE from classifier_data;')
+        cursor.execute('DELETE from users WHERE type = "classifier";')
+
+
 if __name__ == '__main__':
     #update_correct_classifications()
-    classify_remaining(optimise_params=False, no_biotext=False)
-    count_true_false_predicions()
+    #classify_remaining(optimise_params=False, no_biotext=False)
+    #count_true_false_predicions()
+    delete_decisions()
