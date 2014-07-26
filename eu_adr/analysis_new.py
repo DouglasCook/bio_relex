@@ -14,19 +14,19 @@ from sklearn.grid_search import GridSearchCV
 from analysis import load_data
 
 
-def learning_curves():
+def learning_curves(repeats=10):
     """
     Plot learning curve thingies
     """
-    features, labels = load_data(eu_adr_only=False, total_instances=1150)
+    features, labels = load_data(eu_adr_only=False, total_instances=0)
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
 
     samples_per_split = len(data)/10
-    scores = np.zeros(shape=(10, 9, 3, 2))
+    scores = np.zeros(shape=(repeats, 9, 3, 2))
 
-    for i in xrange(10):
+    for i in xrange(repeats):
         scores[i] = get_data_points(data, labels)
 
     # now need to average it out somehow
@@ -41,8 +41,12 @@ def build_pipeline():
     """
     Set up classfier here to avoid repetition
     """
+    # TODO what type of kernel to use?
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='rbf', gamma=10))])
+                    #('svm', SVC(kernel='sigmoid'))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='linear'))])
     return clf
 
 
@@ -87,7 +91,7 @@ def get_scores(train_data, train_labels, test_data, test_labels):
     return np.array([scores[0], scores[1], scores[2]])
 
 
-def draw_plots(scores, samples_per_split=115):
+def draw_plots(scores, samples_per_split):
     """
     Create plots for precision, recall and f-score
     """
@@ -102,9 +106,9 @@ def draw_plots(scores, samples_per_split=115):
     # create ticks for x axis
     ticks = np.linspace(samples_per_split, 9*samples_per_split, 9)
 
-    plot(ticks, true_p, false_p, 'precision', 'plots/balanced_precision.tif')
-    plot(ticks, true_r, false_r, 'recall', 'plots/balanced_recall.tif')
-    plot(ticks, true_f, false_f, 'f-score', 'plots/balanced_fscore.tif')
+    plot(ticks, true_p, false_p, 'Precision', 'plots/balanced_precision.tif')
+    plot(ticks, true_r, false_r, 'Recall', 'plots/balanced_recall.tif')
+    plot(ticks, true_f, false_f, 'F-score', 'plots/balanced_fscore.tif')
 
 
 def plot(ticks, true, false, scoring, filepath):
@@ -114,8 +118,9 @@ def plot(ticks, true, false, scoring, filepath):
     # set up the figure
     plt.figure()
     plt.grid()
-    plt.xlabel('training_instances')
-    plt.ylabel(scoring)
+    plt.xlabel('Training Instances')
+    plt.ylabel('Score')
+    plt.title(scoring)
 
     # plot raw data points
     plt.plot(ticks, true, label='True relations')
@@ -136,4 +141,4 @@ def plot(ticks, true, false, scoring, filepath):
     plt.clf()
 
 if __name__ == '__main__':
-    learning_curves()
+    learning_curves(repeats=20)

@@ -1,10 +1,8 @@
 import pickle
 import datetime
+import random
 
 import numpy as np
-
-from scipy.interpolate import spline
-
 import matplotlib.pyplot as plt
 
 from sklearn.svm import SVC
@@ -36,7 +34,13 @@ def load_data(eu_adr_only=False, total_instances=0):
     # otherwise slice number of instances requested, biotext ones are at end so will be cut off
     else:
         features = pickle.load(open('pickles/scikit_data.p', 'rb'))
-        features = features[:total_instances]
+
+        # may want to load random selection of the biotext samples
+        biotext = features[751:]
+        random.shuffle(biotext)
+        features = features[:751] + biotext[:total_instances - 751]
+        #features = features[:total_instances]
+
         labels = pickle.load(open('pickles/scikit_target.p', 'rb'))
         labels = np.array(labels[:total_instances])
 

@@ -47,8 +47,8 @@ def login():
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
 
-        #USE THIS TO SEE WHAT HAS BEEN CLASSIFIED AS TRUE
         """
+        #USE THIS TO SEE WHAT HAS BEEN CLASSIFIED AS TRUE
         cursor.execute('''SELECT rel_id
                           FROM relations NATURAL JOIN decisions
                           WHERE relations.true_rel IS NULL AND

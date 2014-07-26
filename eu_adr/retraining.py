@@ -53,6 +53,32 @@ def classify_remaining(optimise_params=False, no_biotext=False):
         clf.classify(row)
 
 
+def count_true_false_predicions():
+    """
+    See how many relations predicted as true/false by latest run
+    """
+    with sqlite3.connect(db_path) as db:
+        # need to return dictionary so it matches csv stuff
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+        # get latest classifier
+        cursor.execute('''SELECT max(user_id)
+                          FROM users
+                          WHERE type = 'classifier';''')
+        clsf_id = cursor.fetchone()[0]
+
+        # count the relations
+        cursor.execute('''SELECT decision, count(rel_id)
+                          FROM decisions
+                          WHERE user_id = ?
+                          GROUP BY decision;''', [clsf_id])
+
+        for row in cursor:
+            print row[0], row[1]
+
+
 if __name__ == '__main__':
-    update_correct_classifications()
-    classify_remaining(False, True)
+    #update_correct_classifications()
+    classify_remaining(optimise_params=False, no_biotext=False)
+    count_true_false_predicions()

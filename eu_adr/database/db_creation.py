@@ -25,8 +25,8 @@ def create_tables():
         # table for the relations
         cursor.execute('''CREATE TABLE relations(rel_id INTEGER PRIMARY KEY,
                                                  sent_id INTEGER,
-                                                 true_rel BOOL,
-                                                 bad_ner BOOL,
+                                                 true_rel BOOLEAN,
+                                                 bad_ner BOOLEAN,
                                                  entity1 TEXT,
                                                  type1 TEXT,
                                                  start1 INTEGER,
@@ -132,9 +132,15 @@ def populate_relations():
                     print 'sent_num =', row['sent_num']
                     return 0
 
+                # need to set bool values as 0 or 1 for sqlite
+                if eval(row['true_relation']):
+                    true_rel = 1
+                else:
+                    true_rel = 0
+
                 cursor.execute('INSERT INTO relations VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);',
                                (sent_id,
-                                row['true_relation'],
+                                true_rel,
                                 0,  # this is the bad NER field, false for the original relations
                                 row['e1'].decode('utf-8'),
                                 row['type1'],
@@ -162,31 +168,6 @@ def populate_users():
                                  VALUES (0, 'Douglas', 'testing'), (1, 'Andrew', 'user');''')
 
 
-def populate_decisions():
-    """
-    Populate the decisions table to record 'correct' annotations from the corpora
-    """
-    with sqlite3.connect('relex.db') as db:
-        cursor = db.cursor()
-
-        # this deals with the biotext entries, they have artificial pubmed ids all < 1000
-        # biotext annotator id is 1
-        cursor.execute('''INSERT INTO decisions
-                                 SELECT rel_id,
-                                        1 as annotator_id,
-                                        true_rel
-                                 FROM relations NATURAL JOIN SENTENCES
-                                 WHERE SENTENCES.source = 'Biotext';''')
-
-        # now add eu-adr records
-        cursor.execute('''INSERT INTO decisions
-                                 SELECT rel_id,
-                                        2 as annotator_id,
-                                        true_rel
-                                 FROM relations NATURAL JOIN sentences
-                                 WHERE SENTENCES.source = 'EU-ADR';''')
-
-
 def initial_setup():
     """
     Set up database based on preprocessed sentences from existing corpora
@@ -195,8 +176,6 @@ def initial_setup():
     populate_sentences()
     populate_relations()
     populate_users()
-    # don't need to have the original decisions recorded here now there is source field in sentences
-    #populate_decisions()
 
 if __name__ == '__main__':
     #create_tables()

@@ -128,8 +128,11 @@ class Classifier():
         else:
             # set up pipeline to normalise the data then build the model
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, cache_size=1000,
+                            ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000,
                                         class_weight='auto'))])
+                            #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, class_weight='auto'))])
+                            #('svm', SVC(kernel='sigmoid', cache_size=1000))])
+                            #('svm', SVC(kernel='linear', cache_size=1000, class_weight='auto'))])
 
         # train the model
         clf.fit(data, labels)
