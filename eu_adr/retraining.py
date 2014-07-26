@@ -35,7 +35,7 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     """
     Call classifier to predict values of remaining unclassified instances
     """
-    clf = Classifier(optimise_params=optimise_params, no_biotext=no_biotext)
+    clf = Classifier(optimise_params, no_biotext)
 
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff
@@ -54,5 +54,5 @@ def classify_remaining(optimise_params=False, no_biotext=False):
 
 
 if __name__ == '__main__':
-    #update_correct_classifications()
+    update_correct_classifications()
     classify_remaining(False, True)

@@ -23,7 +23,7 @@ def load_data(eu_adr_only=False, total_instances=0):
     Load some part of data
     Biotext instances are at end of data set so will be sliced off and balance set
     """
-    # TODO slice off a random part of the biotext examples?
+    # TODO slice off a random part of the biotext examples? could use shuffle
     # use all instances if zero is passed in
     if total_instances == 0:
         # if eu_adr is requested do not slice anything off
@@ -70,7 +70,7 @@ def cross_validated(eu_adr_only=False, total_instances=0):
                     #('svm', SVC(kernel='linear', C=2.5))])
                     #('svm', SVC(kernel='rbf', gamma=1))])
                     #('svm', SVC(kernel='sigmoid', gamma=10, coef0=10))])
-                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, class_weight='auto', cache_size=1000))])
+                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000))])
     print clf.get_params()['svm']
 
     # TODO what is the first parameter here?
@@ -94,14 +94,15 @@ def cross_validated(eu_adr_only=False, total_instances=0):
         log.write('finished: ' + str(datetime.datetime.now()) + '\n\n')
 
 
-def no_cross_validation(eu_adr_only=False, total_instances=0):
+def no_cross_validation(eu_adr_only=False, total_instances=0, train_size=0.9):
     features, labels = load_data(eu_adr_only=eu_adr_only, total_instances=total_instances)
 
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
     # split data into training and test sets
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, test_size=0.5)
+    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels,
+                                                                                         train_size=train_size)
 
     # tune the parameters
     best_estimator = tune_parameters(train_data, train_labels)
@@ -117,14 +118,14 @@ def no_cross_validation(eu_adr_only=False, total_instances=0):
                     #('svm', SVC(kernel='sigmoid', gamma=10, coef0=10))])
                     #('svm', SVC(kernel='poly', coef0=4, gamma=0.5, degree=2))])
                     ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=best_gamma,
-                                class_weight='auto', cache_size=1000))])
+                                cache_size=1000))])
     clf.fit(train_data, train_labels)
 
     # classify the test data
     predicted = clf.predict(test_data)
     # evaluate accuracy of output compared to correct classification
     print precision_recall_fscore_support(test_labels, predicted)
-    print metrics.classification_report(test_labels, predicted, target_names=['True', 'False'])
+    print metrics.classification_report(test_labels, predicted)
     print metrics.confusion_matrix(test_labels, predicted)
 
 
@@ -140,17 +141,15 @@ def learning_curves(filepath, scoring, eu_adr_only=False, total_instances=0):
 
     # set up pipeline to normalise the data then build the model
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
+                    ('svm', SVC(kernel='poly', coef0=3, degree=2, gamma=1, cache_size=1000))])
                     #('svm', SVC(kernel='linear'))])
 
-    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True, random_state=50)
+    cv = cross_validation.StratifiedKFold(labels, n_folds=10, shuffle=True, random_state=0)
 
     # why does this always return results in the same pattern??? something fishy is going on
     # think that including 0.9 ends up in downward slope at the end
     sizes, t_scores, v_scores = learning_curve(clf, data, labels,
-                                               train_sizes=np.array([0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7,
-                                                                     0.75, 0.8, 0.85, 0.9]),
-                                               cv=cv, scoring=scoring, n_jobs=-1)
+                                               train_sizes=np.linspace(0.1, 0.9, 8), cv=cv, scoring=scoring, n_jobs=-1)
 
     train_results = np.array([np.mean(t_scores[i]) for i in range(len(t_scores))])
     valid_results = np.array([np.mean(v_scores[i]) for i in range(len(v_scores))])
@@ -165,23 +164,23 @@ def learning_curves(filepath, scoring, eu_adr_only=False, total_instances=0):
     plt.plot(x_new, training_smooth)
     '''
     # instead lets fit a polynomial of degree ? as this should give a better impression!
-    valid_coefs = np.polyfit(sizes, valid_results, deg=3)
-    train_coefs = np.polyfit(sizes, train_results, deg=3)
+    valid_coefs = np.polyfit(sizes, valid_results, deg=2)
+    train_coefs = np.polyfit(sizes, train_results, deg=2)
     x_new = np.linspace(sizes.min(), sizes.max())
     valid_new = np.polyval(valid_coefs, x_new)
     train_new = np.polyval(train_coefs, x_new)
 
     # plot the raw points and the fitted curves
-    plt.plot(x_new, valid_new)
-    plt.plot(x_new, train_new)
-    plt.plot(sizes, train_results)
-    plt.plot(sizes, valid_results)
+    #plt.plot(x_new, train_new)
+    #plt.plot(sizes, train_results)
+    plt.plot(x_new, valid_new, label='fitted poly degree 2')
+    plt.plot(sizes, valid_results, label='raw points')
 
-    # TODO add labels to curves
     kernel = str(clf.named_steps['svm'].get_params()['kernel'])
     coef = str(clf.named_steps['svm'].get_params()['coef0'])
     degree = str(clf.named_steps['svm'].get_params()['degree'])
-    plt.title('kernel: ' + kernel + ', degree: ' + degree + ', coef: ' + coef)
+    c_error = str(clf.named_steps['svm'].get_params()['C'])
+    plt.title('kernel: ' + kernel + ', degree = ' + degree + ', coef = ' + coef + ', C = ' + c_error)
     plt.xlabel('training_instances')
     plt.ylabel('f_score')
 
@@ -197,8 +196,8 @@ def tune_parameters(data, labels):
     # set cv here, why not
     cv = cross_validation.StratifiedKFold(labels, n_folds=5, shuffle=True)
 
-    pipeline = Pipeline([('scaler', preprocessing.Normalizer()),
-                         ('svm', SVC(kernel='poly', gamma=1, class_weight='auto', cache_size=1000))])
+    pipeline = Pipeline([('normaliser', preprocessing.Normalizer()),
+                         ('svm', SVC(kernel='poly', gamma=1, cache_size=1000))])
 
     # can test multiple kernels as well if desired
     #param_grid = [{'kernel': 'poly', 'coef0': [1, 5, 10, 20], 'degree': [2, 3, 4, 5, 10]}]
@@ -230,13 +229,13 @@ def make_curves():
     learning_curves('plots/all_recall.tif', 'recall', eu_adr_only=False)
     print 'bam'
     '''
-    learning_curves('plots/all_balanced_f1.tif', 'f1', eu_adr_only=False, total_instances=1150)
+    learning_curves('plots/balanced_f1.tif', 'f1', eu_adr_only=False, total_instances=1150)
     print 'bam'
-    learning_curves('plots/all_balanced_accuracy.tif', 'accuracy', eu_adr_only=False, total_instances=1150)
+    learning_curves('plots/balanced_accuracy.tif', 'accuracy', eu_adr_only=False, total_instances=1150)
     print 'bam'
-    learning_curves('plots/all_balanced_precision.tif', 'precision', eu_adr_only=False, total_instances=1150)
+    learning_curves('plots/balanced_precision.tif', 'precision', eu_adr_only=False, total_instances=1150)
     print 'bam'
-    learning_curves('plots/all_balanced_recall.tif', 'recall', eu_adr_only=False, total_instances=1150)
+    learning_curves('plots/balanced_recall.tif', 'recall', eu_adr_only=False, total_instances=1150)
     print 'bam'
 
 
@@ -247,10 +246,10 @@ def compare_datasets():
 
 
 if __name__ == '__main__':
-    #no_cross_validation(eu_adr_only=False, total_instances=1150)
     #cross_validated(1150)
     #learning_curves(total_instances=1150)
     #learning_curves(eu_adr_only=True)
     #make_curves()
-    compare_datasets()
+    #compare_datasets()
+    no_cross_validation(eu_adr_only=False, total_instances=1150, train_size=0.5)
 

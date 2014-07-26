@@ -115,7 +115,7 @@ class Classifier():
         # convert from dict into np array
         data = self.vec.fit_transform(data).toarray()
 
-        # TODO may want to add some sort of parameter optimisation here using scikit?
+        # TODO is optimising the parameters worth it or not useful for results?
         if optimise_params:
             optimal = self.tune_parameters(data, labels)
             best_coef = optimal.named_steps['svm'].coef0
@@ -128,7 +128,8 @@ class Classifier():
         else:
             # set up pipeline to normalise the data then build the model
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, cache_size=1000, class_weight='auto'))])
+                            ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, cache_size=1000,
+                                        class_weight='auto'))])
 
         # train the model
         clf.fit(data, labels)

@@ -47,10 +47,21 @@ def login():
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
 
+        #USE THIS TO SEE WHAT HAS BEEN CLASSIFIED AS TRUE
+        """
+        cursor.execute('''SELECT rel_id
+                          FROM relations NATURAL JOIN decisions
+                          WHERE relations.true_rel IS NULL AND
+                                decisions.decision = 1 AND
+                                relations.rel_id NOT IN (SELECT rel_id
+                                                         FROM decisions
+                                                         WHERE decisions.user_id = ?);''', [user_id])
+        """
+
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
         # TODO shuffling is one possible strategy, in order is another, distance from support vectors is another
-        #random.shuffle(rels)
+        random.shuffle(rels)
         session['rels_to_classify'] = rels
         session['next_index'] = 0
 

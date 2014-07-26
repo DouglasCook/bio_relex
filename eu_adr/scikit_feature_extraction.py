@@ -75,7 +75,7 @@ def generate_features(records, no_class=False):
         return feature_vectors, class_vector
 
 
-def part_feature_vectors(tags, stopwords, which_set):
+def part_feature_vectors(tags, stopwords, which_set, word_features=False, count_dict=True):
     """
     Generate features for a set of words, before, between or after
     """
@@ -97,25 +97,34 @@ def part_feature_vectors(tags, stopwords, which_set):
     #bigrams = '"' + ' '.join(bigrams) + '"'
     #words = '"' + ' '.join(words) + '"'
 
-    # WORDS - check for presence of particular words
-    if which_set != 'after':
-        words = [t[0] for t in tags if not re.match('.?\d', t[0])]
-        f_dict.update(word_check(words, which_set))
+    if word_features:
+        # WORDS - check for presence of particular words
+        if which_set != 'after':
+            words = [t[0] for t in tags if not re.match('.?\d', t[0])]
+            f_dict.update(word_check(words, which_set))
 
     # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
     pos = [t[1] for t in tags if t[1] != '-NONE-']
-    f_dict.update(non_counting_dict(pos))
+    # use counting or non counting based on input parameter
+    if count_dict:
+        f_dict.update(counting_dict(pos))
+    else:
+        f_dict.update(non_counting_dict(pos))
     #pos = '"' + ' '.join(pos) + '"'
 
     # CHUNKS - only consider beginning tags of phrases
     phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
-    # slice here to remove 'B-'
     # TODO add some sort of bigram chunk features?
     #phrase_path = '"' + '-'.join([p[2:] for p in phrases]) + '"'
 
     # COMBO - combination of tag and phrase type
+    # slice here to remove 'B-'
     combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]
-    f_dict.update(non_counting_dict(combo))
+    # use counting or non counting based on input parameter
+    if count_dict:
+        f_dict.update(counting_dict(combo))
+    else:
+        f_dict.update(non_counting_dict(combo))
     #combo = '"' + ' '.join(['-'.join(combo) + '"'
 
     # count number of each type of phrase
@@ -135,7 +144,7 @@ def word_check(words, which_set):
         stem_list = ['conclus', 'effect', 'result', 'studi', 'use', 'background', 'compar', 'method',
                      'object']
     elif which_set == 'between':
-        stem_list = ['effect', 'therapi', 'treat', 'treatment', 'efficac', 'reliev', 'relief']
+        stem_list = ['effect', 'therapi', 'treat', 'treatment', 'efficac', 'reliev', 'relief', 'increas', 'reduc']
     else:
         stem_list = ['patient', 'studi']
 
