@@ -122,6 +122,7 @@ class Classifier():
             best_degree = optimal.named_steps['svm'].degree
 
             # set up pipeline to normalise the data then build the model
+            # TODO check what the deal is with auto weighting the classes...
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                             ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=1, cache_size=1000,
                                         class_weight='auto'))])

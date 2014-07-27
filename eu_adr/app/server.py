@@ -43,6 +43,7 @@ def login():
         cursor.execute('''SELECT rel_id
                           FROM relations
                           WHERE relations.true_rel IS NULL AND
+                                relations.bad_ner = 0 AND
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
@@ -52,6 +53,7 @@ def login():
         cursor.execute('''SELECT rel_id
                           FROM relations NATURAL JOIN decisions
                           WHERE relations.true_rel IS NULL AND
+                                relations.bad_ner = 0 AND
                                 decisions.decision = 1 AND
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
@@ -63,6 +65,7 @@ def login():
         # TODO shuffling is one possible strategy, in order is another, distance from support vectors is another
         random.shuffle(rels)
         session['rels_to_classify'] = rels
+        session['number_rels'] = len(rels)
         session['next_index'] = 0
 
     return redirect('/classify')
@@ -101,6 +104,11 @@ def record_decision():
     """
     # write decision to the database
     store_decision(request.form['class'])
+
+    # redirect to finished page if there are no remaining relations
+    if session['next_index'] == session['number_rels'] - 1:
+        return render_template('finished.html')
+
     # increment next relation index
     session['next_index'] = int(session['next_index']) + 1
 
@@ -119,6 +127,13 @@ def store_decision(classification):
         cursor.execute('''INSERT into decisions
                           VALUES (NULL, ?, ?, ?)''',
                        (rel_id, user_id, classification))
+
+        # set bad NER to true if annotator believes it is
+        # ideally this wouldn't happen here, it would need to be a majority decision so would be in retraining
+        if classification == '2':
+            cursor.execute('''UPDATE relations
+                              SET bad_ner = 1
+                              WHERE rel_id = ?''', [rel_id])
 
 
 def split_sentence(sent, start1, end1, start2, end2):

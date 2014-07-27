@@ -21,7 +21,9 @@ def pickle_features(eu_adr_only=False):
                               WHERE sentences.source = 'EU-ADR';''')
         else:
             # want to create features for all relations in db, training test split will be done by scikit-learn
-            cursor.execute('SELECT * FROM relations;')
+            cursor.execute('''SELECT relations.*
+                              FROM relations NATURAL JOIN sentences
+                              WHERE sentences.source != 'pubmed';''')
 
         records = cursor.fetchall()
         feature_vectors, class_vector = generate_features(records)

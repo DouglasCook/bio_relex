@@ -36,10 +36,10 @@ def load_data(eu_adr_only=False, total_instances=0):
         features = pickle.load(open('pickles/scikit_data.p', 'rb'))
 
         # may want to load random selection of the biotext samples
-        biotext = features[751:]
-        random.shuffle(biotext)
-        features = features[:751] + biotext[:total_instances - 751]
-        #features = features[:total_instances]
+        #biotext = features[751:]
+        #random.shuffle(biotext)
+        #features = features[:751] + biotext[:total_instances - 751]
+        features = features[:total_instances]
 
         labels = pickle.load(open('pickles/scikit_target.p', 'rb'))
         labels = np.array(labels[:total_instances])
@@ -255,5 +255,5 @@ if __name__ == '__main__':
     #learning_curves(eu_adr_only=True)
     #make_curves()
     #compare_datasets()
-    no_cross_validation(eu_adr_only=False, total_instances=1150, train_size=0.5)
+    no_cross_validation(eu_adr_only=False, total_instances=0, train_size=0.8)
 

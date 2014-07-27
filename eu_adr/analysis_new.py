@@ -2,6 +2,7 @@ import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
+import sqlite3
 
 from sklearn.svm import SVC
 from sklearn.feature_extraction import DictVectorizer
@@ -11,14 +12,41 @@ from sklearn import preprocessing
 from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
 
-from analysis import load_data
+import scikit_feature_extraction
+
+
+def load_data(eu_adr_only=False):
+    """
+    Load some part of data
+    Biotext instances are at end of data set so will be sliced off and balance set
+    """
+    with sqlite3.connect('database/test.db') as db:
+        # using Row as row factory means can reference fields by name instead of index
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+    # may only want to look at sentences from eu-adr to start with
+    if eu_adr_only:
+        cursor.execute('''SELECT relations.*
+                              FROM relations NATURAL JOIN sentences
+                              WHERE sentences.source = 'EU-ADR';''')
+    else:
+        # want to create features for all relations in db, training test split will be done by scikit-learn
+        cursor.execute('''SELECT relations.*
+                          FROM relations NATURAL JOIN sentences
+                          WHERE sentences.source != 'pubmed';''')
+
+    records = cursor.fetchall()
+    feature_vectors, class_vector = scikit_feature_extraction.generate_features(records)
+
+    return feature_vectors, class_vector
 
 
 def learning_curves(repeats=10):
     """
     Plot learning curve thingies
     """
-    features, labels = load_data(eu_adr_only=False, total_instances=0)
+    features, labels = load_data(eu_adr_only=False)
     # convert from dict into np array
     vec = DictVectorizer()
     data = vec.fit_transform(features).toarray()
@@ -45,7 +73,7 @@ def build_pipeline():
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
-                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=2, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
     return clf
 
@@ -113,7 +141,7 @@ def draw_plots(scores, samples_per_split):
 
 def plot(ticks, true, false, scoring, filepath):
     """
-    Plot give values
+    Plot given values
     """
     # set up the figure
     plt.figure()
@@ -127,11 +155,11 @@ def plot(ticks, true, false, scoring, filepath):
     plt.plot(ticks, false, label='False relations')
 
     # now fit polynomial (straight line) to the points and extend plot out
-    valid_coefs = np.polyfit(ticks, true, deg=1)
-    train_coefs = np.polyfit(ticks, false, deg=1)
+    true_coefs = np.polyfit(ticks, true, deg=1)
+    false_coefs = np.polyfit(ticks, false, deg=1)
     x_new = np.linspace(ticks.min(), 2*ticks.max())
-    true_fitted = np.polyval(valid_coefs, x_new)
-    false_fitted = np.polyval(train_coefs, x_new)
+    true_fitted = np.polyval(true_coefs, x_new)
+    false_fitted = np.polyval(false_coefs, x_new)
     plt.plot(x_new, true_fitted, label='True relations best fit')
     plt.plot(x_new, false_fitted, label='False relations best fit')
 
