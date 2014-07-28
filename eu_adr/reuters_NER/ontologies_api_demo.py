@@ -38,7 +38,9 @@ def summariseXml(apiOutput):
                 end = i._end
                 entity = str(i._originalForm)
 
-                matches[entity] = [e_type, start, end]
+                # don't want P < 0.001 recognised as a drug!
+                if entity[:5] != 'P < .':
+                    matches[entity] = [e_type, start, end]
 
         except:
             pass
@@ -72,10 +74,12 @@ def runOntologiesSearch(testPhrase):
 
 
 if __name__ == '__main__':
-    output = runOntologiesSearch(
-        'sd pfizer gilenya acetominophen ache injection assay phase 1 il8 ace sildenafil or acetaminophen with a phase(2) trial progesterone')
+    #output = runOntologiesSearch(
+        #'sd pfizer gilenya acetominophen ache injection assay phase 1 il8 ace sildenafil or acetaminophen with a phase(2) trial progesterone')
     # summariseXml(output)
 
+    output = runOntologiesSearch('Multiple regression analysis showed that pancreas-to-muscle SI ratios on T1-weighted images and ADC values were independently associated with pancreatic fibrosis (r(2) = 0.66, P < .001) and with activated PSC expression (r(2) = 0.67, P < .001).')
+    print summariseXml(output)
 '''
 filename = 'C:/' 	# e.g. 'C:/tmp/text.txt'
 f = open(filename, w)

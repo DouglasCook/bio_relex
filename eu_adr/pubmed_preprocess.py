@@ -41,7 +41,7 @@ def relevant_into_temp():
 
                     # if there is at least one action and one indication the sentence is relevant
                     if disorder_present and treatment_present:
-                        cursor.execute('''INSERT INTO relevant_sentences
+                        cursor.execute('''INSERT INTO temp_sentences
                                                  VALUES (?, ?);''',
                                        (row['sent_id'], str(entity_dict)))
                         # print just to see progress
@@ -70,8 +70,8 @@ def add_to_relations():
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
         # take everything from relevant sentences that has not already been checked for relations
-        cursor.execute('''SELECT relevant_sentences.*, sentences.sentence
-                          FROM relevant_sentences NATURAL JOIN sentences
+        cursor.execute('''SELECT temp_sentences.*, sentences.sentence
+                          FROM temp_sentences NATURAL JOIN sentences
                           WHERE sent_id NOT IN (SELECT DISTINCT(sent_id)
                                                 FROM relations);''')
         sentences = cursor.fetchall()

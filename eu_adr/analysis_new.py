@@ -20,7 +20,7 @@ def load_data(eu_adr_only=False):
     Load some part of data
     Biotext instances are at end of data set so will be sliced off and balance set
     """
-    with sqlite3.connect('database/test.db') as db:
+    with sqlite3.connect('database/original_data.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
         cursor = db.cursor()

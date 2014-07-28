@@ -92,11 +92,11 @@ def delete_decisions():
                           SET true_rel = NULL
                           WHERE rel_id IN (SELECT rel_id
                                            FROM relations NATURAL JOIN sentences
-                                           WHERE sentences.source = 'pubmed';''')
+                                           WHERE sentences.source = 'pubmed');''')
 
 
 if __name__ == '__main__':
-    update_correct_classifications()
-    classify_remaining(optimise_params=False, no_biotext=False)
-    count_true_false_predicions()
-    #delete_decisions()
+    #update_correct_classifications()
+    #classify_remaining(optimise_params=False, no_biotext=False)
+    #count_true_false_predicions()
+    delete_decisions()

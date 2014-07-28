@@ -2,18 +2,21 @@ import sqlite3
 import csv
 
 
-def create_tables():
+def create_tables(db_name, new=True):
     """
     Create tables to hold the data
     """
-    with sqlite3.connect('relex.db') as db:
+    with sqlite3.connect(db_name) as db:
         cursor = db.cursor()
 
-        # drop the tables
-        cursor.execute('DROP TABLE sentences;')
-        cursor.execute('DROP TABLE relations;')
-        cursor.execute('DROP TABLE users;')
-        cursor.execute('DROP TABLE decisions;')
+        # drop the tables if overwriting existing db
+        if not new:
+            cursor.execute('DROP TABLE sentences;')
+            cursor.execute('DROP TABLE relations;')
+            cursor.execute('DROP TABLE users;')
+            cursor.execute('DROP TABLE decisions;')
+            cursor.execute('DROP TABLE temp_sentences')
+            cursor.execute('DROP TABLE classifier_data')
 
         # table for sentences themselves, don't know if this is necessary since the tags etc are per relation?
         cursor.execute('''CREATE TABLE sentences(sent_id INTEGER PRIMARY KEY,
@@ -53,29 +56,12 @@ def create_tables():
                                                  FOREIGN KEY(rel_id) REFERENCES relations,
                                                  FOREIGN KEY(user_id) REFERENCES users);''')
 
-
-def create_temp_sentences():
-    """
-    Table to store new sentences from pubmed query possibly containing relations (before they are processed)
-    """
-    # TODO rename this as temp
-    with sqlite3.connect('test.db') as db:
-        cursor = db.cursor()
-        cursor.execute('DROP TABLE relevant_sentences')
         # table for new sentences containing possible relations
-        cursor.execute('''CREATE TABLE relevant_sentences(sent_id INTEGER,
-                                                          entity_dict TEXT,
-                                                          FOREIGN KEY(sent_id) REFERENCES sentences);''')
+        cursor.execute('''CREATE TABLE temp_sentences(sent_id INTEGER,
+                                                      entity_dict TEXT,
+                                                      FOREIGN KEY(sent_id) REFERENCES sentences);''')
 
-
-def create_classifier_table():
-    """
-    Table to store training set used for each classifier
-    """
-    with sqlite3.connect('test.db') as db:
-        cursor = db.cursor()
-        cursor.execute('DROP TABLE classifier_data')
-        # table for annotators decision
+        # table for annotators decisions
         cursor.execute('''CREATE TABLE classifier_data(clsf_id INTEGER,
                                                        training_rel INTEGER,
                                                        FOREIGN KEY(clsf_id) REFERENCES users(user_id),
@@ -168,14 +154,32 @@ def populate_users():
                                  VALUES (0, 'Douglas', 'testing'), (1, 'Andrew', 'user');''')
 
 
-def initial_setup():
+def clean_biotext_relations():
+    """
+    Remove biotext relations deemed unhelpful
+    """
+    with sqlite3.connect('original_data.db') as db:
+        cursor = db.cursor()
+        cursor.execute('''DELETE FROM relations
+                          WHERE rel_id IN (SELECT rel_id
+                                           FROM relations NATURAL JOIN sentences
+                                           WHERE source = 'Biotext' AND
+                                                 (entity1 LIKE '%therapy%' OR entity1 LIKE '%therapi%' OR entity1 LIKE
+                                                 '%surgery%' OR entity1 LIKE '%surgical%' OR entity1 LIKE '%treatment%'
+                                                  OR entity2 LIKE '%therapy%' OR entity2 LIKE '%therapi%' OR entity2
+                                                  LIKE  '%surgery%' OR entity2 LIKE '%surgical%' OR entity2 LIKE
+                                                  '%treatment%'));''')
+
+
+def initial_setup(db_name, new=True):
     """
     Set up database based on preprocessed sentences from existing corpora
     """
-    create_tables()
+    create_tables(db_name, new)
     populate_sentences()
     populate_relations()
     populate_users()
+    clean_biotext_relations()
 
 if __name__ == '__main__':
     #create_tables()
@@ -184,4 +188,5 @@ if __name__ == '__main__':
     #populate_decisions()
     #initial_setup()
     #create_temp_sentences()
-    create_classifier_table()
+    #create_classifier_table()
+    clean_biotext_relations()
