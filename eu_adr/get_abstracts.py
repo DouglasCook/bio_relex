@@ -171,7 +171,7 @@ def retrieve_abstracts():
     Bring down abstracts from pubmed based on ids stored in pickle
     """
     # TODO store all records returned by query and save a pointer to next one to download
-    record = pickle.load(open('pickles/pubmed_records.p', 'rb'))
+    record = pickle.load(open('pickles/pubmed_records_new.p', 'rb'))
 
     #record = pubmed_query_new()
 
@@ -219,7 +219,7 @@ def medline_to_db():
     """
     # TODO combine this with NER so only relevant sentences are written to the db
     sentence_splitter = set_up_tokenizer()
-    files = set(pickle.load(open('pickles/pubmed_records.p', 'rb')))
+    files = set(pickle.load(open('pickles/pubmed_records_new.p', 'rb')))
 
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
