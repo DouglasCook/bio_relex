@@ -148,12 +148,30 @@ def pubmed_query():
     pickle.dump(record['IdList'], open('pickles/pubmed_records.p', 'wb'))
 
 
+def pubmed_query_new():
+    """
+    Perform search of Pubmed database using Entrez and return relevant ids
+    """
+    # query taken from eu-adr corpus with the adverse effects part removed
+    query = '"Crohn\'s disease" OR "chronic kidney disease"'
+    # retmax defines how many ids to return, defaults to 20
+    handle = Entrez.esearch(db='pubmed', term=query, retmax=1000)
+    record = Entrez.read(handle)
+
+    #print record['Count']
+    #print record['QueryTranslation']
+    return record['IdList']
+    #pickle.dump(record['IdList'], open('pickles/pubmed_records.p', 'wb'))
+
+
 def retrieve_abstracts():
     """
     Bring down abstracts from pubmed based on ids stored in pickle
     """
     # TODO store all records returned by query and save a pointer to next one to download
-    record = pickle.load(open('pickles/pubmed_records.p', 'rb'))
+    #record = pickle.load(open('pickles/pubmed_records.p', 'rb'))
+
+    record = pubmed_query_new()
 
     for pubmed_id in record:
         print pubmed_id
@@ -231,4 +249,5 @@ if __name__ == '__main__':
     #retrieve_abstracts()
     #scrape_pubmed()
     #file_list()
-    medline_to_db()
+    #medline_to_db()
+    pubmed_query_new()

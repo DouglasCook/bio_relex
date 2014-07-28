@@ -23,12 +23,12 @@ def update_correct_classifications():
                            SET true_rel = (SELECT decisions.decision
                                            FROM decisions NATURAL JOIN users
                                            WHERE decision != 2 AND
-                                           users.type != 'classifier' AND
-                                           decisions.rel_id = relations.rel_id)
-                           WHERE relations.rel_id IN(SELECT decisions.rel_id
-                                                     FROM decisions NATURAL JOIN users
-                                                     WHERE decisions.decision != 2 AND
-                                                     users.type != 'classifier');''')
+                                                 users.type != 'classifier' AND
+                                                 decisions.rel_id = relations.rel_id)
+                           WHERE relations.rel_id IN (SELECT decisions.rel_id
+                                                      FROM decisions NATURAL JOIN users
+                                                      WHERE decisions.decision != 2 AND
+                                                      users.type != 'classifier');''')
 
 
 def classify_remaining(optimise_params=False, no_biotext=False):
@@ -70,7 +70,7 @@ def count_true_false_predicions():
 
         # count the relations
         cursor.execute('''SELECT decision, count(rel_id)
-                          FROM decisions
+                          FROM predictions
                           WHERE user_id = ?
                           GROUP BY decision;''', [clsf_id])
 
@@ -85,9 +85,10 @@ def delete_decisions():
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff
         cursor = db.cursor()
-        cursor.execute('DELETE from decisions;')
-        cursor.execute('DELETE from classifier_data;')
-        cursor.execute('DELETE from users WHERE type = "classifier";')
+        cursor.execute('DELETE FROM predictions;')
+        cursor.execute('DELETE FROM decisions;')
+        cursor.execute('DELETE FROM classifier_data;')
+        cursor.execute('DELETE FROM users WHERE type = "classifier";')
         cursor.execute('''UPDATE relations
                           SET true_rel = NULL
                           WHERE rel_id IN (SELECT rel_id

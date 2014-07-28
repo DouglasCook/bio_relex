@@ -15,6 +15,7 @@ def create_tables(db_name, new=True):
             cursor.execute('DROP TABLE relations;')
             cursor.execute('DROP TABLE users;')
             cursor.execute('DROP TABLE decisions;')
+            cursor.execute('DROP TABLE predictions;')
             cursor.execute('DROP TABLE temp_sentences')
             cursor.execute('DROP TABLE classifier_data')
 
@@ -56,6 +57,15 @@ def create_tables(db_name, new=True):
                                                  FOREIGN KEY(rel_id) REFERENCES relations,
                                                  FOREIGN KEY(user_id) REFERENCES users);''')
 
+        # table for the classifiers' predictions
+        cursor.execute('''CREATE TABLE predictions(prediction_id INTEGER PRIMARY KEY,
+                                                   rel_id INTEGER,
+                                                   user_id INTEGER,
+                                                   decision INTEGER,
+                                                   confidence_value REAL,
+                                                   FOREIGN KEY(rel_id) REFERENCES relations,
+                                                   FOREIGN KEY(user_id) REFERENCES users);''')
+
         # table for new sentences containing possible relations
         cursor.execute('''CREATE TABLE temp_sentences(sent_id INTEGER,
                                                       entity_dict TEXT,
@@ -68,7 +78,7 @@ def create_tables(db_name, new=True):
                                                        FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
 
-def populate_sentences():
+def populate_sentences(db_name):
     """
     Populate the sentences table with initial set of sentences from biotext and eu-adr corpora
     """
@@ -77,7 +87,7 @@ def populate_sentences():
         pid = 0
         sent_num = 0
 
-        with sqlite3.connect('relex.db') as db:
+        with sqlite3.connect(db_name) as db:
             cursor = db.cursor()
 
             for row in csv_reader:
@@ -95,7 +105,7 @@ def populate_sentences():
                 sent_num = row['sent_num']
 
 
-def populate_relations():
+def populate_relations(db_name):
     """
     Populate the relations table with set of 'correctly' annotated relations
     """
@@ -103,7 +113,7 @@ def populate_relations():
         csv_reader = csv.DictReader(f_in, delimiter=',')
 
         # TODO should I just be connecting once here or multiple times?
-        with sqlite3.connect('relex.db') as db:
+        with sqlite3.connect(db_name) as db:
             cursor = db.cursor()
 
             for row in csv_reader:
@@ -141,29 +151,29 @@ def populate_relations():
                                 row['after_tags'].decode('utf-8')))
 
 
-def populate_users():
+def populate_users(db_name):
     """
     Populate the decisions table to record 'correct' annotations from the corpora
     """
-    with sqlite3.connect('relex.db') as db:
+    with sqlite3.connect(db_name) as db:
         cursor = db.cursor()
 
         # this deals with the biotext entries, they have artificial pubmed ids all < 1000
         # biotext annotator id is 1
         cursor.execute('''INSERT INTO users
-                                 VALUES (0, 'Douglas', 'testing'), (1, 'Andrew', 'user');''')
+                                 VALUES (NULL, 'Douglas', 'testing'), (NULL, 'Andrew', 'user');''')
 
 
-def clean_biotext_relations():
+def clean_biotext_relations(db_name):
     """
     Remove biotext relations deemed unhelpful
     """
-    with sqlite3.connect('original_data.db') as db:
+    with sqlite3.connect(db_name) as db:
         cursor = db.cursor()
         cursor.execute('''DELETE FROM relations
                           WHERE rel_id IN (SELECT rel_id
                                            FROM relations NATURAL JOIN sentences
-                                           WHERE source = 'Biotext' AND
+                                           WHERE source = 'biotext' AND
                                                  (entity1 LIKE '%therapy%' OR entity1 LIKE '%therapi%' OR entity1 LIKE
                                                  '%surgery%' OR entity1 LIKE '%surgical%' OR entity1 LIKE '%treatment%'
                                                   OR entity2 LIKE '%therapy%' OR entity2 LIKE '%therapi%' OR entity2
@@ -176,10 +186,10 @@ def initial_setup(db_name, new=True):
     Set up database based on preprocessed sentences from existing corpora
     """
     create_tables(db_name, new)
-    populate_sentences()
-    populate_relations()
-    populate_users()
-    clean_biotext_relations()
+    populate_sentences(db_name)
+    populate_relations(db_name)
+    populate_users(db_name)
+    clean_biotext_relations(db_name)
 
 if __name__ == '__main__':
     #create_tables()
@@ -189,4 +199,7 @@ if __name__ == '__main__':
     #initial_setup()
     #create_temp_sentences()
     #create_classifier_table()
-    clean_biotext_relations()
+    #clean_biotext_relations()
+    #boom()
+    #initial_setup('relex_new.db')
+    clean_biotext_relations('relex_new.db')

@@ -59,7 +59,7 @@ class Classifier():
                                             rel_id
                                      FROM relations NATURAL JOIN sentences
                                      WHERE true_rel IS NOT NULL AND
-                                           sentences.source != 'Biotext';''', [self.user_id])
+                                           sentences.source != 'biotext';''', [self.user_id])
             else:
                 cursor.execute('''INSERT INTO classifier_data
                                          SELECT ? as clsf_id,
@@ -151,10 +151,12 @@ class Classifier():
         # TODO speed up the classification by classifying everything in one go?
         # predict returns an array so need to remove element
         prediction = self.clf.predict(data)[0]
+        # calculate distance from separating hyperplane as measure of confidence
+        confidence = abs(self.clf.decision_function(data)[0][0])
 
         with sqlite3.connect(self.db_path) as db:
             cursor = db.cursor()
             # by default want to train on all examples with a 'correct' classification
-            cursor.execute('''INSERT INTO decisions
-                                     VALUES (NULL, ?, ?, ?);''',
-                           (record['rel_id'], self.user_id, prediction))
+            cursor.execute('''INSERT INTO predictions
+                                     VALUES (NULL, ?, ?, ?, ?);''',
+                           (record['rel_id'], self.user_id, prediction, confidence))

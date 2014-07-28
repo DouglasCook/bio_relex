@@ -40,6 +40,21 @@ def login():
         cursor = db.cursor()
 
         # TODO change query dependent on active learning method eg decision function
+        # THIS ORDERS RELATIONS BY THEIR DISTANCE FROM THE SEPARATING HYPERPLANE
+        cursor.execute('''SELECT rel_id
+                          FROM relations NATURAL JOIN predictions
+                          WHERE relations.true_rel IS NULL AND
+                                relations.bad_ner = 0 AND
+                                predictions.user_id = (SELECT max(user_id)
+                                                       FROM users
+                                                       WHERE type = 'classifier') AND
+                                relations.rel_id NOT IN (SELECT rel_id
+                                                         FROM decisions
+                                                         WHERE decisions.user_id = ?)
+                           ORDER BY predictions.confidence_value;''', [user_id])
+
+        """
+        # THIS JUST TAKES EVERYTHING THAT HAS NOT BEEN HUMAN ANNOTATED
         cursor.execute('''SELECT rel_id
                           FROM relations
                           WHERE relations.true_rel IS NULL AND
@@ -47,14 +62,15 @@ def login():
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
+        """
 
         """
         #USE THIS TO SEE WHAT HAS BEEN CLASSIFIED AS TRUE
         cursor.execute('''SELECT rel_id
-                          FROM relations NATURAL JOIN decisions
+                          FROM relations NATURAL JOIN predictions
                           WHERE relations.true_rel IS NULL AND
                                 relations.bad_ner = 0 AND
-                                decisions.decision = 1 AND
+                                predictions.decision = 1 AND
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
@@ -63,7 +79,7 @@ def login():
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
         # TODO shuffling is one possible strategy, in order is another, distance from support vectors is another
-        random.shuffle(rels)
+        #random.shuffle(rels)
         session['rels_to_classify'] = rels
         session['number_rels'] = len(rels)
         session['next_index'] = 0
@@ -160,13 +176,13 @@ def return_relation(rel_id):
                                  relations.start2,
                                  relations.end2,
                                  relations.rel_id,
-                                 decisions.decision
+                                 predictions.decision
                           FROM sentences NATURAL JOIN relations
-                                         NATURAL JOIN decisions
+                                         NATURAL JOIN predictions
                           WHERE relations.rel_id = ? AND
-                                decisions.user_id = (SELECT max(user_id)
-                                                     FROM users
-                                                     WHERE type = 'classifier');''', [rel_id])
+                                predictions.user_id = (SELECT max(user_id)
+                                                       FROM users
+                                                       WHERE type = 'classifier');''', [rel_id])
 
         row = cursor.fetchone()
         before, between, after = split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],

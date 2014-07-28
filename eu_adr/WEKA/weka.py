@@ -1,6 +1,6 @@
 import os
 
-import feature_extraction
+from eu_adr.WEKA import feature_extraction
 
 
 def create_arff(filepath, relation, attributes):
