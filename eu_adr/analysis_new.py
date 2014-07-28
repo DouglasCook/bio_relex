@@ -1,18 +1,15 @@
-import pickle
+import sqlite3
 
 import numpy as np
 import matplotlib.pyplot as plt
-import sqlite3
-
-from sklearn.svm import SVC
-from sklearn.feature_extraction import DictVectorizer
-from sklearn import cross_validation
-from sklearn.metrics import precision_recall_fscore_support
 from sklearn import preprocessing
+from sklearn import cross_validation
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
+from sklearn.svm import SVC
 
-import scikit_feature_extraction
+from eu_adr.app import scikit_feature_extraction
 
 
 def load_data(eu_adr_only=False):
@@ -73,8 +70,11 @@ def build_pipeline():
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
-                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=2, cache_size=1000, class_weight='auto'))])
+                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=2, cache_size=1000, class_weight='auto'))])
+                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
+                    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
+                                                             #n_jobs=-1))])
     return clf
 
 

@@ -1,10 +1,8 @@
-import nltk
 import csv  # used for accessing data held in CSV format
-import os.path  # need this to use relative filepaths
 import re  # regular expressions for extracting named entities
 
+from eu_adr.app import utility
 import preprocessing
-from eu_adr import utility
 
 
 def pos_tags():

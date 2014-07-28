@@ -154,7 +154,7 @@ def pubmed_query_new():
     """
     # query taken from eu-adr corpus with the adverse effects part removed
     query = ('("crohn\'s disease"[All Fields] OR "chronic kidney disease"[All Fields]) '
-             'AND hasabstract[text] AND English[lang]')
+             'AND hasabstract[text] AND English[lang] AND ("2012"[PDAT]: "2014"[PDAT])')
     # retmax defines how many ids to return, defaults to 20
     handle = Entrez.esearch(db='pubmed', term=query, retmax=1000)
     record = Entrez.read(handle)
@@ -238,7 +238,12 @@ def medline_to_db():
                 #print help(record)
                 # use medline parser to extract relevant data from the file
                 pid = record['PMID']
-                text = record['TI'] + ' ' + record['AB']
+
+                try:
+                    text = record['TI'] + ' ' + record['AB']
+                # bti is for books? the value is a list for some reason so just take first element
+                except:
+                    text = record['BTI'][0] + ' ' + record['AB']
 
                 sentences = sentence_splitter.tokenize(text)
                 for i, s in enumerate(sentences):

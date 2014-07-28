@@ -35,6 +35,16 @@ def login():
     user_id = request.form['user']
     session['user_id'] = user_id
 
+    # save relevant parameters in session
+    select_relations(user_id)
+
+    return redirect('/classify')
+
+
+def select_relations(user_id):
+    """
+    Generate set of relations to be classified by user and save in session
+    """
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
@@ -83,8 +93,6 @@ def login():
         session['rels_to_classify'] = rels
         session['number_rels'] = len(rels)
         session['next_index'] = 0
-
-    return redirect('/classify')
 
 
 @app.route('/classify')

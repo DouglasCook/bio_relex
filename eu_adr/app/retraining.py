@@ -1,8 +1,8 @@
 import sqlite3
 
 from classifier import Classifier
-
 import utility
+
 db_path = utility.build_filepath(__file__, 'database/test.db')
 
 

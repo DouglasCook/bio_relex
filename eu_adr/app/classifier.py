@@ -1,11 +1,12 @@
 import sqlite3
 
-from sklearn.svm import SVC
-from sklearn.feature_extraction import DictVectorizer
 from sklearn import preprocessing
+from sklearn import cross_validation
 from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
-from sklearn import cross_validation
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 import utility
 from scikit_feature_extraction import generate_features
@@ -131,9 +132,10 @@ class Classifier():
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                             ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000,
                                         class_weight='auto'))])
-                            #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, class_weight='auto'))])
+                            #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, class_weight='auto'))])
                             #('svm', SVC(kernel='sigmoid', cache_size=1000))])
                             #('svm', SVC(kernel='linear', cache_size=1000, class_weight='auto'))])
+                            #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False, n_jobs=-1))])
 
         # train the model
         clf.fit(data, labels)
@@ -160,3 +162,4 @@ class Classifier():
             cursor.execute('''INSERT INTO predictions
                                      VALUES (NULL, ?, ?, ?, ?);''',
                            (record['rel_id'], self.user_id, prediction, confidence))
+                           #(record['rel_id'], self.user_id, prediction))
