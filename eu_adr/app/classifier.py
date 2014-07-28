@@ -18,7 +18,7 @@ class Classifier():
     """
     def __init__(self, optimise_params=False, no_biotext=False):
         # set up connection to database
-        self.db_path = utility.build_filepath(__file__, 'database/test.db')
+        self.db_path = utility.build_filepath(__file__, '../database/test.db')
 
         # set up vectoriser for transforming data from dictionary to numpy array
         self.vec = DictVectorizer()

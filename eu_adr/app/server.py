@@ -1,5 +1,6 @@
 import random
 import sys
+import sqlite3
 
 from flask import Flask
 from flask import render_template
@@ -7,17 +8,12 @@ from flask import request
 from flask import session
 from flask import redirect
 
-import sqlite3
+import utility
 
 # TODO exception catching / error redirects?
 app = Flask(__name__)
 app.secret_key = 'blahblahblah'
-
-# TODO fix package importing
-# for some reason this doesn't work... fuck knows why, it is probably not worth the bother
-#from .. import utility
-#db_path = utility.build_filepath(__file__, '../database/test.db')
-db_path = '../database/test.db'
+db_path = utility.build_filepath(__file__, '../database/test.db')
 
 
 @app.route('/')
@@ -160,13 +156,6 @@ def store_decision(classification):
                               WHERE rel_id = ?''', [rel_id])
 
 
-def split_sentence(sent, start1, end1, start2, end2):
-    """
-    Put divs around the entities so they will be highlighted on page
-    """
-    return sent[:start1], sent[end1 + 1:start2], sent[end2 + 1:]
-
-
 def return_relation(rel_id):
     """
     Get potential relation from database
@@ -193,8 +182,8 @@ def return_relation(rel_id):
                                                        WHERE type = 'classifier');''', [rel_id])
 
         row = cursor.fetchone()
-        before, between, after = split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
-                                                row['end2'])
+        before, between, after = utility.split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
+                                                        row['end2'])
 
         return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1']
 

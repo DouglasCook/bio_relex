@@ -3,7 +3,7 @@ import sqlite3
 from classifier import Classifier
 import utility
 
-db_path = utility.build_filepath(__file__, 'database/test.db')
+db_path = utility.build_filepath(__file__, '../database/test.db')
 
 
 def update_correct_classifications():
@@ -98,6 +98,6 @@ def delete_decisions():
 
 if __name__ == '__main__':
     #update_correct_classifications()
-    #classify_remaining(optimise_params=False, no_biotext=False)
-    #count_true_false_predicions()
-    delete_decisions()
+    classify_remaining(optimise_params=False, no_biotext=False)
+    count_true_false_predicions()
+    #delete_decisions()

@@ -8,3 +8,10 @@ def build_filepath(caller, f_path):
     """
     basepath = os.path.dirname(caller)
     return os.path.abspath(os.path.join(basepath, f_path))
+
+
+def split_sentence(sent, start1, end1, start2, end2):
+    """
+    Put divs around the entities so they will be highlighted on page
+    """
+    return sent[:start1], sent[end1 + 1:start2], sent[end2 + 1:]
