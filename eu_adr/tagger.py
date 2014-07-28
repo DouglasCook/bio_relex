@@ -33,6 +33,7 @@ class TaggerChunker(nltk.ChunkParserI):
         Return word, pos tag, chunk triples
         """
         # TODO remove undesirable words or tokens here? also remove CONCLUSION, METHODS etc since they aren't important
+        # TODO want to chunk whole sentence before splitting into parts, should give better results
         text = nltk.word_tokenize(text)
         # text = [b for b in between if b not in stopwords]
         tags = nltk.pos_tag(text)

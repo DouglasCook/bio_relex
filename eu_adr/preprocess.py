@@ -1,6 +1,9 @@
 import os
+import sys
 import csv
 import pickle
+
+from tagger import TaggerChunker
 
 
 def relations_to_dict():
@@ -203,8 +206,63 @@ def drug_disorder_only():
                     csv_writer.writerow(row)
 
 
+def tagging(filename, new_file=False):
+    """
+    Tags and chunk words between the two entities
+    """
+    # set filepath to input
+    file_in = 'csv/' + filename
+    file_out = 'csv/tagged_sentences_NEW.csv'
+
+    chunker = TaggerChunker()
+
+    # want to append or write over depending on situation
+    if new_file:
+        mode = 'wb'
+    else:
+        mode = 'ab'
+
+    with open(file_in, 'rb') as csv_in:
+        with open(file_out, mode) as csv_out:
+            # set columns here so they can be more easily changed
+            cols = ['pid',
+                    'sent_num',
+                    'true_relation',
+                    'e1',
+                    'e2',
+                    'type1',
+                    'type2',
+                    'start1',
+                    'end1',
+                    'start2',
+                    'end2',
+                    'sentence',
+                    'before_tags',
+                    'between_tags',
+                    'after_tags']
+            csv_reader = csv.DictReader(csv_in, delimiter=',')
+            csv_writer = csv.DictWriter(csv_out, cols, delimiter=',', extrasaction='ignore')
+
+            # only write header when creating new file
+            if new_file:
+                csv_writer.writeheader()
+
+            for row in csv_reader:
+                # display progress bar
+                sys.stdout.write('.')
+                sys.stdout.flush()
+
+                row.update({'before_tags': chunker.pos_and_chunk_tags(row['before'])})
+                row.update({'between_tags': chunker.pos_and_chunk_tags(row['between'])})
+                row.update({'after_tags': chunker.pos_and_chunk_tags(row['after'])})
+
+                csv_writer.writerow(row)
+
+
 if __name__ == '__main__':
     #abstracts_to_csv()
     #relations_to_dict()
-    create_input_file()
-    drug_disorder_only()
+    #create_input_file()
+    #drug_disorder_only()
+    tagging('drug_disorder_only.csv', new_file=True)
+    tagging('biotext.csv', new_file=False)
