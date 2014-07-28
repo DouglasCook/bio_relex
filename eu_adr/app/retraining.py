@@ -19,16 +19,16 @@ def update_correct_classifications():
         # updated all unclassified relations based on annotators decisions
         # this query is horrific but don't think sqlite offers a nicer way to do it
 
-        cursor.execute(''' UPDATE relations
-                           SET true_rel = (SELECT decisions.decision
-                                           FROM decisions NATURAL JOIN users
-                                           WHERE decision != 2 AND
-                                                 users.type != 'classifier' AND
-                                                 decisions.rel_id = relations.rel_id)
-                           WHERE relations.rel_id IN (SELECT decisions.rel_id
-                                                      FROM decisions NATURAL JOIN users
-                                                      WHERE decisions.decision != 2 AND
-                                                      users.type != 'classifier');''')
+        cursor.execute('''UPDATE relations
+                          SET true_rel = (SELECT decisions.decision
+                                          FROM decisions NATURAL JOIN users
+                                          WHERE decision != 2 AND
+                                                users.type != 'classifier' AND
+                                                decisions.rel_id = relations.rel_id)
+                          WHERE relations.rel_id IN (SELECT decisions.rel_id
+                                                     FROM decisions NATURAL JOIN users
+                                                     WHERE decisions.decision != 2 AND
+                                                           users.type != 'classifier');''')
 
 
 def classify_remaining(optimise_params=False, no_biotext=False):
@@ -96,8 +96,16 @@ def delete_decisions():
                                            WHERE sentences.source = 'pubmed');''')
 
 
+def update():
+    """
+    To be called from the server
+    """
+    update_correct_classifications()
+    classify_remaining(optimise_params=False, no_biotext=False)
+
+
 if __name__ == '__main__':
     #update_correct_classifications()
-    classify_remaining(optimise_params=False, no_biotext=False)
-    count_true_false_predicions()
-    #delete_decisions()
+    #classify_remaining(optimise_params=False, no_biotext=False)
+    #count_true_false_predicions()
+    delete_decisions()

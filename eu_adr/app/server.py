@@ -9,6 +9,7 @@ from flask import session
 from flask import redirect
 
 import utility
+import retraining
 
 # TODO exception catching / error redirects?
 app = Flask(__name__)
@@ -31,8 +32,9 @@ def login():
     user_id = request.form['user']
     session['user_id'] = user_id
 
-    # save relevant parameters in session
+    # save relation data in session
     select_relations(user_id)
+    remaining_to_do(user_id)
 
     return redirect('/classify')
 
@@ -46,6 +48,7 @@ def select_relations(user_id):
         cursor = db.cursor()
 
         # TODO change query dependent on active learning method eg decision function
+        """
         # THIS ORDERS RELATIONS BY THEIR DISTANCE FROM THE SEPARATING HYPERPLANE
         cursor.execute('''SELECT rel_id
                           FROM relations NATURAL JOIN predictions
@@ -68,7 +71,6 @@ def select_relations(user_id):
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
-        """
 
         """
         #USE THIS TO SEE WHAT HAS BEEN CLASSIFIED AS TRUE
@@ -89,6 +91,35 @@ def select_relations(user_id):
         session['rels_to_classify'] = rels
         session['number_rels'] = len(rels)
         session['next_index'] = 0
+
+
+def remaining_to_do(user_id):
+    """
+    Calculate how many relations need to be classified before retraining
+    """
+    with sqlite3.connect(db_path) as db:
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+        # now want to count how many relations remain to be annotated before retraining
+        # first count number of relations already classified
+        cursor.execute('''SELECT count(rel_id)
+                          FROM relations
+                          WHERE true_rel IS NOT NULL''')
+        # want to retrain once we have 10% more data
+        to_do = cursor.fetchone()[0]/10
+        print 'to do', to_do
+
+        # now count all classifications done since last retraining
+        cursor.execute('''SELECT count(rel_id)
+                          FROM decisions
+                          WHERE user_id = ? AND
+                                rel_id NOT IN (SELECT rel_id
+                                               FROM relations
+                                               WHERE true_rel IS NOT NULL)''', [user_id])
+
+        session['still_to_do'] = to_do - cursor.fetchone()[0]
+        print 'still to do', session['still_to_do']
 
 
 @app.route('/classify')
@@ -129,8 +160,19 @@ def record_decision():
     if session['next_index'] == session['number_rels'] - 1:
         return render_template('finished.html')
 
+    session['still_to_do'] -= 1
+    print 'still to do', session['still_to_do']
+    # if it's time to retrain
+    if session['still_to_do'] == 0:
+        # retrain and classify remaining
+        retraining.update()
+        # requery relations etc
+        select_relations(session['user_id'])
+        remaining_to_do(session['user_id'])
+        return redirect('/classify')
+
     # increment next relation index
-    session['next_index'] = int(session['next_index']) + 1
+    session['next_index'] += 1
 
     return redirect('/classify')
 
