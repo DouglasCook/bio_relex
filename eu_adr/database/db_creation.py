@@ -82,7 +82,7 @@ def populate_sentences(db_name):
     """
     Populate the sentences table with initial set of sentences from biotext and eu-adr corpora
     """
-    with open('../csv/tagged_sentences_stemmed.csv', 'rb') as f_in:
+    with open('../csv/tagged_sentences_NEW.csv', 'rb') as f_in:
         csv_reader = csv.DictReader(f_in, delimiter=',')
         pid = 0
         sent_num = 0
@@ -109,7 +109,7 @@ def populate_relations(db_name):
     """
     Populate the relations table with set of 'correctly' annotated relations
     """
-    with open('../csv/tagged_sentences_stemmed.csv', 'rb') as f_in:
+    with open('../csv/tagged_sentences_NEW.csv', 'rb') as f_in:
         csv_reader = csv.DictReader(f_in, delimiter=',')
 
         # TODO should I just be connecting once here or multiple times?
@@ -201,5 +201,5 @@ if __name__ == '__main__':
     #create_classifier_table()
     #clean_biotext_relations()
     #boom()
-    #initial_setup('relex_new.db')
-    clean_biotext_relations('relex_new.db')
+    initial_setup('relex_new.db')
+    #clean_biotext_relations('relex_new.db')

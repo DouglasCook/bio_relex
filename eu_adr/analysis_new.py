@@ -9,7 +9,30 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 
-from eu_adr.app import scikit_feature_extraction
+from eu_adr.app.scikit_feature_extraction import FeatureExtractor
+
+
+def learning_curves(repeats=10):
+    """
+    Plot learning curve thingies
+    """
+    features, labels = load_data(eu_adr_only=False)
+    # convert from dict into np array
+    vec = DictVectorizer()
+    data = vec.fit_transform(features).toarray()
+
+    samples_per_split = len(data)/10
+    scores = np.zeros(shape=(repeats, 9, 3, 2))
+
+    for i in xrange(repeats):
+        scores[i] = get_data_points(data, labels, i)
+
+    # now need to average it out somehow
+    av_scores = scores.mean(axis=0)
+    draw_plots(av_scores, samples_per_split)
+
+    #pickle.dump(scores, open('scores.p', 'wb'))
+    #pickle.dump(av_scores, open('av_scores.p', 'wb'))
 
 
 def load_data(eu_adr_only=False):
@@ -17,7 +40,9 @@ def load_data(eu_adr_only=False):
     Load some part of data
     Biotext instances are at end of data set so will be sliced off and balance set
     """
-    with sqlite3.connect('database/original_data.db') as db:
+    # set up feature extractor with desired features
+    extractor = FeatureExtractor()
+    with sqlite3.connect('database/euadr_biotext.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
@@ -34,32 +59,9 @@ def load_data(eu_adr_only=False):
                           WHERE sentences.source != 'pubmed';''')
 
     records = cursor.fetchall()
-    feature_vectors, class_vector = scikit_feature_extraction.generate_features(records)
+    feature_vectors, class_vector = extractor.generate_features(records)
 
     return feature_vectors, class_vector
-
-
-def learning_curves(repeats=10):
-    """
-    Plot learning curve thingies
-    """
-    features, labels = load_data(eu_adr_only=False)
-    # convert from dict into np array
-    vec = DictVectorizer()
-    data = vec.fit_transform(features).toarray()
-
-    samples_per_split = len(data)/10
-    scores = np.zeros(shape=(repeats, 9, 3, 2))
-
-    for i in xrange(repeats):
-        scores[i] = get_data_points(data, labels)
-
-    # now need to average it out somehow
-    av_scores = scores.mean(axis=0)
-    draw_plots(av_scores, samples_per_split)
-
-    #pickle.dump(scores, open('scores.p', 'wb'))
-    #pickle.dump(av_scores, open('av_scores.p', 'wb'))
 
 
 def build_pipeline():
@@ -70,15 +72,16 @@ def build_pipeline():
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=2, cache_size=1000, class_weight='auto'))])
-                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, class_weight='auto'))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
+                    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, class_weight='auto'))])
+                    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
                     #('svm', SVC(kernel='linear'))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
                                                              #n_jobs=-1))])
     return clf
 
 
-def get_data_points(data, labels):
+def get_data_points(data, labels, j):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -87,14 +90,18 @@ def get_data_points(data, labels):
     scores = np.zeros(shape=(9, 3, 2))
 
     # first split at 10%
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1)
+    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1,
+                                                                                         random_state=10*j)
+                                                                                         #random_state=None)
     no_samples = len(train_data)
     scores[0] = get_scores(train_data, train_labels, test_data, test_labels)
 
     # now loop to create remaining training sets
     for i in xrange(1, 9):
         more_data, test_data, more_labels, test_labels = cross_validation.train_test_split(test_data, test_labels,
-                                                                                           train_size=no_samples)
+                                                                                           train_size=no_samples,
+                                                                                           random_state=i*j)
+                                                                                           #random_state=None)
         # add the new training data to existing
         train_data = np.append(train_data, more_data, axis=0)
         train_labels = np.append(train_labels, more_labels)

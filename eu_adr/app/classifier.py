@@ -9,16 +9,18 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 
 import utility
-from scikit_feature_extraction import generate_features
 
 
 class Classifier():
     """
     Classifier class to make pubmed classification more straight forward
     """
-    def __init__(self, optimise_params=False, no_biotext=False):
+    def __init__(self, f_extractor, optimise_params=False, no_biotext=False):
         # set up connection to database
         self.db_path = utility.build_filepath(__file__, '../database/test.db')
+
+        # set up the feature extractor with desired features
+        self.extractor = f_extractor
 
         # set up vectoriser for transforming data from dictionary to numpy array
         self.vec = DictVectorizer()
@@ -84,7 +86,7 @@ class Classifier():
             records = cursor.fetchall()
 
         # extract the feature vectors and class labels for training set
-        return generate_features(records)
+        return self.extractor.generate_features(records)
 
     def tune_parameters(self, data, labels):
         """
@@ -147,7 +149,7 @@ class Classifier():
         Classify given record and write prediction to table
         """
         # list is expected when generating features so put the record in a list
-        data = generate_features([record], no_class=True)
+        data = self.extractor.generate_features([record], no_class=True)
         #print data
         data = self.vec.transform(data).toarray()
         # TODO speed up the classification by classifying everything in one go?

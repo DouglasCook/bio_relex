@@ -1,7 +1,8 @@
 import sqlite3
 
-from classifier import Classifier
 import utility
+from classifier import Classifier
+from scikit_feature_extraction import FeatureExtractor
 
 db_path = utility.build_filepath(__file__, '../database/test.db')
 
@@ -35,7 +36,10 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     """
     Call classifier to predict values of remaining unclassified instances
     """
-    clf = Classifier(optimise_params, no_biotext)
+    # set up feature extractor with desired parameters
+    f_extractor = FeatureExtractor()
+    # set up classifier with link to feature extractor
+    clf = Classifier(f_extractor, optimise_params, no_biotext)
 
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff
@@ -106,6 +110,6 @@ def update():
 
 if __name__ == '__main__':
     #update_correct_classifications()
-    #classify_remaining(optimise_params=False, no_biotext=False)
-    #count_true_false_predicions()
-    delete_decisions()
+    classify_remaining(optimise_params=False)
+    count_true_false_predicions()
+    #delete_decisions()
