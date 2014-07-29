@@ -23,6 +23,18 @@ def user_selection():
     user_list = get_user_list()
     return render_template('login.html', users=user_list)
 
+
+def get_user_list():
+    """
+    Return list of existing users for login page
+    """
+    with sqlite3.connect(db_path) as db:
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM users WHERE type = 'user'")
+    return [u for u in cursor]
+
+
 @app.route('/login', methods=['POST'])
 def login():
     """
@@ -63,6 +75,7 @@ def select_relations(user_id):
                            ORDER BY predictions.confidence_value;''', [user_id])
 
         """
+        """
         # THIS JUST TAKES EVERYTHING THAT HAS NOT BEEN HUMAN ANNOTATED
         cursor.execute('''SELECT rel_id
                           FROM relations
@@ -82,7 +95,6 @@ def select_relations(user_id):
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
-        """
 
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
@@ -148,6 +160,38 @@ def classify():
                            e1=e1, e2=e2, true_check=true_check, drug_first=drug_first)
 
 
+def return_relation(rel_id):
+    """
+    Get potential relation from database
+    """
+    with sqlite3.connect(db_path) as db:
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+        cursor.execute('''SELECT sentences.sentence,
+                                 relations.entity1,
+                                 relations.type1,
+                                 relations.start1,
+                                 relations.end1,
+                                 relations.entity2,
+                                 relations.type2,
+                                 relations.start2,
+                                 relations.end2,
+                                 relations.rel_id,
+                                 predictions.decision
+                          FROM sentences NATURAL JOIN relations
+                                         NATURAL JOIN predictions
+                          WHERE relations.rel_id = ? AND
+                                predictions.user_id = (SELECT max(user_id)
+                                                       FROM users
+                                                       WHERE type = 'classifier');''', [rel_id])
+
+        row = cursor.fetchone()
+        before, between, after = utility.split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
+                                                        row['end2'])
+
+        return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1']
+
+
 @app.route('/save', methods=['POST'])
 def record_decision():
     """
@@ -197,49 +241,6 @@ def store_decision(classification):
             cursor.execute('''UPDATE relations
                               SET bad_ner = 1
                               WHERE rel_id = ?''', [rel_id])
-
-
-def return_relation(rel_id):
-    """
-    Get potential relation from database
-    """
-    with sqlite3.connect(db_path) as db:
-        db.row_factory = sqlite3.Row
-        cursor = db.cursor()
-        cursor.execute('''SELECT sentences.sentence,
-                                 relations.entity1,
-                                 relations.type1,
-                                 relations.start1,
-                                 relations.end1,
-                                 relations.entity2,
-                                 relations.type2,
-                                 relations.start2,
-                                 relations.end2,
-                                 relations.rel_id,
-                                 predictions.decision
-                          FROM sentences NATURAL JOIN relations
-                                         NATURAL JOIN predictions
-                          WHERE relations.rel_id = ? AND
-                                predictions.user_id = (SELECT max(user_id)
-                                                       FROM users
-                                                       WHERE type = 'classifier');''', [rel_id])
-
-        row = cursor.fetchone()
-        before, between, after = utility.split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
-                                                        row['end2'])
-
-        return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1']
-
-
-def get_user_list():
-    """
-    Return list of existing users for login page
-    """
-    with sqlite3.connect(db_path) as db:
-        db.row_factory = sqlite3.Row
-        cursor = db.cursor()
-        cursor.execute("SELECT * FROM users WHERE type = 'user'")
-    return [u for u in cursor]
 
 
 if __name__ == '__main__':

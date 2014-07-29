@@ -41,7 +41,7 @@ def load_data(eu_adr_only=False):
     Biotext instances are at end of data set so will be sliced off and balance set
     """
     # set up feature extractor with desired features
-    extractor = FeatureExtractor()
+    extractor = FeatureExtractor(word_gap=True)
     with sqlite3.connect('database/euadr_biotext.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
@@ -91,7 +91,7 @@ def get_data_points(data, labels, j):
 
     # first split at 10%
     train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1,
-                                                                                         random_state=10*j)
+                                                                                         random_state=2*j)
                                                                                          #random_state=None)
     no_samples = len(train_data)
     scores[0] = get_scores(train_data, train_labels, test_data, test_labels)
@@ -141,9 +141,9 @@ def draw_plots(scores, samples_per_split):
     # create ticks for x axis
     ticks = np.linspace(samples_per_split, 9*samples_per_split, 9)
 
-    plot(ticks, true_p, false_p, 'Precision', 'plots/balanced_precision.tif')
-    plot(ticks, true_r, false_r, 'Recall', 'plots/balanced_recall.tif')
-    plot(ticks, true_f, false_f, 'F-score', 'plots/balanced_fscore.tif')
+    plot(ticks, true_p, false_p, 'Precision', 'plots/balanced_precision.png')
+    plot(ticks, true_r, false_r, 'Recall', 'plots/balanced_recall.png')
+    plot(ticks, true_f, false_f, 'F-score', 'plots/balanced_fscore.png')
 
 
 def plot(ticks, true, false, scoring, filepath):
@@ -172,7 +172,7 @@ def plot(ticks, true, false, scoring, filepath):
 
     plt.legend(loc='best')
 
-    plt.savefig(filepath, format='tif')
+    plt.savefig(filepath, format='png')
     plt.clf()
 
 if __name__ == '__main__':

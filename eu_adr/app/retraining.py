@@ -37,7 +37,7 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     Call classifier to predict values of remaining unclassified instances
     """
     # set up feature extractor with desired parameters
-    f_extractor = FeatureExtractor()
+    f_extractor = FeatureExtractor(word_gap=True)
     # set up classifier with link to feature extractor
     clf = Classifier(f_extractor, optimise_params, no_biotext)
 
@@ -109,7 +109,7 @@ def update():
 
 
 if __name__ == '__main__':
-    #update_correct_classifications()
+    update_correct_classifications()
     classify_remaining(optimise_params=False)
     count_true_false_predicions()
     #delete_decisions()

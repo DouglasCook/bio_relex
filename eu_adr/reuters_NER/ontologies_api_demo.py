@@ -38,10 +38,9 @@ def summariseXml(apiOutput):
                 end = i._end
                 entity = str(i._originalForm)
 
-                # don't want P < 0.001 recognised as a drug!
-                if entity[:5] != 'P < .':
+                # don't want P < 0.001 recognised as a drug, brackets and capitalisation mean need to use find
+                if entity.find('.001') == -1:
                     matches[entity] = [e_type, start, end]
-
         except:
             pass
 
