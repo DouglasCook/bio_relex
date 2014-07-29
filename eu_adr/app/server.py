@@ -106,7 +106,7 @@ def remaining_to_do(user_id):
         cursor.execute('''SELECT count(rel_id)
                           FROM relations
                           WHERE true_rel IS NOT NULL''')
-        # want to retrain once we have 10% more data
+        # want to retrain once we have 10% more data - python 2 so will floor the result
         to_do = cursor.fetchone()[0]/10
         print 'to do', to_do
 
@@ -162,6 +162,7 @@ def record_decision():
 
     session['still_to_do'] -= 1
     print 'still to do', session['still_to_do']
+
     # if it's time to retrain
     if session['still_to_do'] == 0:
         # retrain and classify remaining

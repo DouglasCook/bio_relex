@@ -212,7 +212,7 @@ def tagging(filename, new_file=False):
     """
     # set filepath to input
     file_in = 'csv/' + filename
-    file_out = 'csv/tagged_sentences_NEW.csv'
+    file_out = 'csv/tagged_sentences_NEW_CHUNKS.csv'
 
     chunker = TaggerChunker()
 
@@ -252,9 +252,12 @@ def tagging(filename, new_file=False):
                 sys.stdout.write('.')
                 sys.stdout.flush()
 
-                row.update({'before_tags': chunker.pos_and_chunk_tags(row['before'])})
-                row.update({'between_tags': chunker.pos_and_chunk_tags(row['between'])})
-                row.update({'after_tags': chunker.pos_and_chunk_tags(row['after'])})
+                # tag and chunk the parts of sentence
+                bef, bet, aft = chunker.proper_pos_and_chunk_tags(row['sentence'], row['before'], row['between'],
+                                                                  row['e1'], row['e2'])
+                row.update({'before_tags': bef})
+                row.update({'between_tags': bet})
+                row.update({'after_tags': aft})
 
                 csv_writer.writerow(row)
 

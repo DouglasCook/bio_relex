@@ -48,3 +48,41 @@ class TaggerChunker(nltk.ChunkParserI):
         chunks = [(c[0].encode('utf-8'), c[1], c[2]) for c in chunks]
 
         return chunks
+
+    def proper_pos_and_chunk_tags(self, sentence, before, between, e1, e2):
+        """
+        Return word, pos tag, chunk triples
+        """
+        # TODO remove undesirable words or tokens here? also remove CONCLUSION, METHODS etc since they aren't important
+        sentence = nltk.word_tokenize(sentence)
+
+        # now calculate start and end token indices
+        bef_end = len(nltk.word_tokenize(before))
+        bet_start = bef_end + len(nltk.word_tokenize(e1))
+        bet_end = bet_start + len(nltk.word_tokenize(between))
+        aft_start = bet_end + len(nltk.word_tokenize(e2))
+
+        # text = [b for b in between if b not in stopwords]
+        tags = nltk.pos_tag(sentence)
+        all_chunks = self.parse(tags)
+
+        # now split sentence into its parts and tidy up
+        bef_chunks = self.clean_chunks(all_chunks[:bef_end])
+        bet_chunks = self.clean_chunks(all_chunks[bet_start:bet_end])
+        aft_chunks = self.clean_chunks(all_chunks[aft_start:])
+
+        return bef_chunks, bet_chunks, aft_chunks
+
+    def clean_chunks(self, chunks):
+        """
+        Stem the words and remove punctuation
+        """
+        # now want to remove any punctuation - maybe don't want to remove absolutely all punctuation?
+        # match returns true without needing to match whole string
+        chunks = [c for c in chunks if not re.match('\W', c[0])]
+
+        # stemming - not sure about the encode decode nonsense...
+        chunks = [(self.stemmer.stem(c[0].decode('utf-8')), c[1], c[2]) for c in chunks]
+        chunks = [(c[0].encode('utf-8'), c[1], c[2]) for c in chunks]
+
+        return chunks

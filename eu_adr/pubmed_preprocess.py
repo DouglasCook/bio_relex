@@ -36,7 +36,7 @@ def relevant_into_temp():
                 for key in entity_dict:
                     if entity_dict[key][0] == 'Indication':
                         disorder_present = True
-                    elif entity_dict[key][0] == 'Action' or entity_dict[key][0] == 'Drug':
+                    elif entity_dict[key][0] == 'Drug':
                         treatment_present = True
 
                     # if there is at least one action and one indication the sentence is relevant
@@ -81,7 +81,7 @@ def add_to_relations():
             entity_dict = eval(row['entity_dict'])
             # create lists for disorders and treatments
             disorders = [k for k in entity_dict if entity_dict[k][0] == 'Indication']
-            treatments = [k for k in entity_dict if entity_dict[k][0] in ['Action', 'Drug']]
+            treatments = [k for k in entity_dict if entity_dict[k][0] == 'Drug']
 
             # loop through all pairs
             for t in treatments:
@@ -102,22 +102,21 @@ def add_to_relations():
                         end2, end1 = treat_dict[2], dis_dict[2]
 
                     before, between, after = split_sentence(row['sentence'], start1, end1, start2, end2)
-                    # tag parts of sentences
-                    before = tagger.pos_and_chunk_tags(before)
-                    between = tagger.pos_and_chunk_tags(between)
-                    after = tagger.pos_and_chunk_tags(after)
+                    # tag and chunk the parts of sentence
+                    bef_chunks, bet_chunks, aft_chunks = tagger.proper_pos_and_chunk_tags(row['sentence'], before,
+                                                                                          between, e1, e2)
 
                     # TODO do I need to catch the exceptions here, don't want it to crash?
                     try:
                         cursor.execute('''INSERT INTO relations
                                           VALUES (NULL, ?, NULL, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                                       (sent_id, e1, type1, start1, end1, e2, type2, start2, end2, str(before),
-                                        str(between), str(after)))
+                                       (sent_id, e1, type1, start1, end1, e2, type2, start2, end2, str(bef_chunks),
+                                        str(bet_chunks), str(aft_chunks)))
                     except:
                         pass
 
 
 if __name__ == '__main__':
     #test()
-    #relevant_into_temp()
+    relevant_into_temp()
     add_to_relations()
