@@ -80,13 +80,14 @@ class Classifier():
             # training data query
             cursor.execute('''SELECT *
                               FROM relations
-                              WHERE rel_id IN (SELECT rel_id
+                              WHERE rel_id IN (SELECT training_rel
                                                FROM classifier_data
                                                WHERE clsf_id = ?);''', [self.user_id])
             records = cursor.fetchall()
 
+        print self.user_id
+        print len(records)
         # NOW NEED TO BALANCE THE CLASSES
-
 
         # extract the feature vectors and class labels for training set
         return self.extractor.generate_features(records, balance_classes=True)

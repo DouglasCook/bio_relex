@@ -133,8 +133,10 @@ class FeatureExtractor():
         """
         Undersample the over-represented class so it contains same number of samples
         """
+        print len(feature_vectors), len(class_vector)
         true_count = sum(class_vector)
         false_count = len(class_vector) - true_count
+        print true_count, false_count
 
         # zip together with the labels
         together = sorted(zip(class_vector, feature_vectors))
