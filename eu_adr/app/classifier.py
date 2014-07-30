@@ -77,6 +77,7 @@ class Classifier():
         """
         # first balance the classes - NOT DOING THIS
         #self.balance_classes()
+        # if want to balance need to change query below to use FROM classifier_data_balanced
 
         with sqlite3.connect(self.db_path) as db:
             db.row_factory = sqlite3.Row
