@@ -2,6 +2,7 @@ import re
 import nltk
 import pickle
 import sqlite3
+import random
 
 
 class FeatureExtractor():
@@ -21,7 +22,7 @@ class FeatureExtractor():
         self.count_dict = count_dict
         self.phrase_count = phrase_count
 
-    def generate_features(self, records, no_class=False):
+    def generate_features(self, records, no_class=False, balance_classes=False):
         """
         Generate feature vectors and class labels for given records
         If no_class is true then the relation has not been annotated so don't return a class vector
@@ -57,8 +58,11 @@ class FeatureExtractor():
 
         if no_class:
             return feature_vectors
-        else:
-            return feature_vectors, class_vector
+        # if a class is to be undersampled
+        elif balance_classes:
+            feature_vectors, class_vector = self.balance_classes(feature_vectors, class_vector)
+
+        return feature_vectors, class_vector
 
     def part_feature_vectors(self, tags, which_set):
         """
@@ -123,6 +127,36 @@ class FeatureExtractor():
             f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
 
         return f_dict
+
+    @staticmethod
+    def balance_classes(feature_vectors, class_vector):
+        """
+        Undersample the over-represented class so it contains same number of samples
+        """
+        true_count = sum(class_vector)
+        false_count = len(class_vector) - true_count
+
+        # zip together with the labels
+        together = sorted(zip(class_vector, feature_vectors))
+        # split into classes
+        false = together[:false_count]
+        true = together[false_count+1:]
+
+        # undersample the over represented class
+        if true_count < false_count:
+            false = random.sample(false, true_count)
+        elif false_count < true_count:
+            true = random.sample(true, false_count)
+
+        # put back together again and shuffle so the classes are not ordered
+        print len(true), len(false)
+        together = false + true
+        random.shuffle(together)
+
+        # unzip before returning
+        classes, features = zip(*together)
+
+        return features, classes
 
     @staticmethod
     def word_check(words, which_set):

@@ -109,7 +109,7 @@ def update():
 
 
 if __name__ == '__main__':
-    update_correct_classifications()
+    #update_correct_classifications()
     classify_remaining(optimise_params=False)
     count_true_false_predicions()
     #delete_decisions()

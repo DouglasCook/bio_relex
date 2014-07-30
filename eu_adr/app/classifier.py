@@ -85,10 +85,14 @@ class Classifier():
                                                WHERE clsf_id = ?);''', [self.user_id])
             records = cursor.fetchall()
 
-        # extract the feature vectors and class labels for training set
-        return self.extractor.generate_features(records)
+        # NOW NEED TO BALANCE THE CLASSES
 
-    def tune_parameters(self, data, labels):
+
+        # extract the feature vectors and class labels for training set
+        return self.extractor.generate_features(records, balance_classes=True)
+
+    @staticmethod
+    def tune_parameters(data, labels):
         """
         Tune the parameters using exhaustive grid search
         """
@@ -100,7 +104,7 @@ class Classifier():
 
         # can test multiple kernels as well if desired
         #param_grid = [{'kernel': 'poly', 'coef0': [1, 5, 10, 20], 'degree': [2, 3, 4, 5, 10]}]
-        param_grid = [{'svm__coef0': [1, 2, 3, 4, 5], 'svm__degree': [2, 3, 4, 5]}]
+        param_grid = [{'svm__coef0': [1, 2, 3, 4, 5], 'svm__degree': [2, 3, 4, 5], 'svm__C': [1, 2]}]
         print 'tuning params'
         clf = GridSearchCV(pipeline, param_grid, n_jobs=-1, cv=cv)
         clf.fit(data, labels)
@@ -123,18 +127,22 @@ class Classifier():
             optimal = self.tune_parameters(data, labels)
             best_coef = optimal.named_steps['svm'].coef0
             best_degree = optimal.named_steps['svm'].degree
+            best_c = optimal.named_steps['svm'].C
 
             # set up pipeline to normalise the data then build the model
             # TODO check what the deal is with auto weighting the classes...
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=1, cache_size=1000,
-                                        class_weight='auto'))])
+                            ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, C=best_c, gamma=1,
+                                        cache_size=1000))])
+                            #('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=1, cache_size=1000,
+                                        #class_weight='auto'))])
         else:
             # set up pipeline to normalise the data then build the model
             clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000,
-                                        class_weight='auto'))])
-                            #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, class_weight='auto'))])
+                            ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                            #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000,
+                                        #class_weight='auto'))])
+                            #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
                             #('svm', SVC(kernel='sigmoid', cache_size=1000))])
                             #('svm', SVC(kernel='linear', cache_size=1000, class_weight='auto'))])
                             #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False, n_jobs=-1))])
