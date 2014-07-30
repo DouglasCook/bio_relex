@@ -62,40 +62,9 @@ def load_features_data(eu_adr_only=False):
                           WHERE sentences.source != 'pubmed';''')
 
     records = cursor.fetchall()
-    feature_vectors, class_vector = extractor.generate_features(records)
-    feature_vectors, class_vector = balance_classes(feature_vectors, class_vector)
+    feature_vectors, class_vector = extractor.generate_features(records, balance_classes=False)
 
     return feature_vectors, class_vector
-
-
-def balance_classes(feature_vectors, class_vector):
-    """
-    Undersample the over-represented class so it contains same number of samples
-    """
-    true_count = sum(class_vector)
-    false_count = len(class_vector) - true_count
-
-    # zip together with the labels
-    together = sorted(zip(class_vector, feature_vectors))
-    # split into classes
-    false = together[:false_count]
-    true = together[false_count+1:]
-
-    # undersample the over represented class
-    if true_count < false_count:
-        false = random.sample(false, true_count)
-    elif false_count < true_count:
-        true = random.sample(true, false_count)
-
-    # put back together again and shuffle so the classes are not ordered
-    print len(true), len(false)
-    together = false + true
-    random.shuffle(together)
-
-    # unzip before returning
-    classes, features = zip(*together)
-
-    return features, classes
 
 
 def build_pipeline():
@@ -106,9 +75,9 @@ def build_pipeline():
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
-                    ('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
+                    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
                     #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, class_weight='auto'))])
                     #('svm', SVC(kernel='linear'))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,

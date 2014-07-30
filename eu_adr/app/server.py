@@ -1,5 +1,6 @@
 import random
 import sys
+import os
 import sqlite3
 
 from flask import Flask
@@ -13,8 +14,8 @@ import retraining
 
 # TODO exception catching / error redirects?
 app = Flask(__name__)
-app.secret_key = 'blahblahblah'
-db_path = utility.build_filepath(__file__, '../database/test.db')
+app.secret_key = os.urandom(24)
+db_path = utility.build_filepath(__file__, '../database/relex.db')
 
 
 @app.route('/')
@@ -75,7 +76,6 @@ def select_relations(user_id):
                            ORDER BY predictions.confidence_value;''', [user_id])
 
         """
-        """
         # THIS JUST TAKES EVERYTHING THAT HAS NOT BEEN HUMAN ANNOTATED
         cursor.execute('''SELECT rel_id
                           FROM relations
@@ -95,6 +95,7 @@ def select_relations(user_id):
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
+        """
 
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]

@@ -71,12 +71,25 @@ def create_tables(db_name, new=True):
                                                       entity_dict TEXT,
                                                       FOREIGN KEY(sent_id) REFERENCES sentences);''')
 
-        # table for annotators decisions
+        # table for classifier training data
         cursor.execute('''CREATE TABLE classifier_data(clsf_id INTEGER,
                                                        training_rel INTEGER,
                                                        FOREIGN KEY(clsf_id) REFERENCES users(user_id),
                                                        FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
+        # table for balanced data really used for training
+        cursor.execute('''CREATE TABLE classifier_data_balanced(clsf_id INTEGER,
+                                                                training_rel INTEGER,
+                                                       FOREIGN KEY(clsf_id) REFERENCES users(user_id),
+                                                       FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
+
+def do_it():
+    with sqlite3.connect('new_query.db') as db:
+        cursor = db.cursor()
+    cursor.execute('''CREATE TABLE classifier_data_balanced(clsf_id INTEGER,
+                                                                training_rel INTEGER,
+                                                       FOREIGN KEY(clsf_id) REFERENCES users(user_id),
+                                                       FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
 def populate_sentences(db_name):
     """
@@ -201,5 +214,6 @@ if __name__ == '__main__':
     #create_classifier_table()
     #clean_biotext_relations()
     #boom()
-    initial_setup('relex_new.db')
+    #initial_setup('relex_new.db')
     #clean_biotext_relations('relex_new.db')
+    do_it()

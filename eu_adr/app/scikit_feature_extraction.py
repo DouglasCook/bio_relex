@@ -137,6 +137,7 @@ class FeatureExtractor():
         false_count = len(class_vector) - true_count
 
         # zip together with the labels
+        # TODO use list comprehension instead
         together = sorted(zip(class_vector, feature_vectors))
         # split into classes
         false = together[:false_count]

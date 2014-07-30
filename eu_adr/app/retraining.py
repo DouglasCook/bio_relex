@@ -4,7 +4,7 @@ import utility
 from classifier import Classifier
 from scikit_feature_extraction import FeatureExtractor
 
-db_path = utility.build_filepath(__file__, '../database/test.db')
+db_path = utility.build_filepath(__file__, '../database/relex.db')
 
 
 def update_correct_classifications():
@@ -92,6 +92,7 @@ def delete_decisions():
         cursor.execute('DELETE FROM predictions;')
         cursor.execute('DELETE FROM decisions;')
         cursor.execute('DELETE FROM classifier_data;')
+        cursor.execute('DELETE FROM classifier_data_balanced;')
         cursor.execute('DELETE FROM users WHERE type = "classifier";')
         cursor.execute('''UPDATE relations
                           SET true_rel = NULL
@@ -110,6 +111,6 @@ def update():
 
 if __name__ == '__main__':
     #update_correct_classifications()
-    classify_remaining(optimise_params=False)
+    classify_remaining(optimise_params=False, no_biotext=False)
     count_true_false_predicions()
     #delete_decisions()
