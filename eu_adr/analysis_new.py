@@ -44,7 +44,7 @@ def load_features_data(eu_adr_only=False):
     Load some part of data
     """
     # set up feature extractor with desired features
-    extractor = FeatureExtractor(word_gap=True, count_dict=False)
+    extractor = FeatureExtractor(word_gap=True, count_dict=True)
     with sqlite3.connect('database/euadr_biotext.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row

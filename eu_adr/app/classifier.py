@@ -1,13 +1,7 @@
 import sqlite3
 import random
 
-from sklearn import preprocessing
-from sklearn import cross_validation
-from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
 
 import utility
 
@@ -16,15 +10,15 @@ class Classifier():
     """
     Classifier class to make pubmed classification more straight forward
     """
+    # set up connection to database
+    db_path = utility.build_filepath(__file__, '../database/relex.db')
+
+    # set up vectoriser for transforming data from dictionary to numpy array
+    vec = DictVectorizer()
+
     def __init__(self, f_extractor, optimise_params=False, no_biotext=False):
-        # set up connection to database
-        self.db_path = utility.build_filepath(__file__, '../database/relex.db')
-
-        # set up the feature extractor with desired features
+        # save feature extractor passed to constructor
         self.extractor = f_extractor
-
-        # set up vectoriser for transforming data from dictionary to numpy array
-        self.vec = DictVectorizer()
 
         # set up user record for the classifier
         self.user_id = self.create_user()
@@ -32,7 +26,7 @@ class Classifier():
         # save records used for training for later experimentation with different classifiers
         self.create_training_set(no_biotext)
 
-        # set up classifier pipeline
+        # set up classifier pipeline, uses train function implemented in subclasses
         self.clf = self.train(optimise_params)
 
     def create_user(self):
@@ -128,87 +122,3 @@ class Classifier():
             for t in together:
                 cursor.execute('''INSERT INTO classifier_data_balanced
                                   VALUES (?, ?);''', (self.user_id, t))
-
-    @staticmethod
-    def tune_parameters(data, labels):
-        """
-        Tune the parameters using exhaustive grid search
-        """
-        # set cv here, why not
-        cv = cross_validation.StratifiedKFold(labels, n_folds=5, shuffle=True)
-
-        pipeline = Pipeline([('normaliser', preprocessing.Normalizer()),
-                             ('svm', SVC(kernel='poly', cache_size=1000))])
-
-        # can test multiple kernels as well if desired
-        #param_grid = [{'kernel': 'poly', 'coef0': [1, 5, 10, 20], 'degree': [2, 3, 4, 5, 10]}]
-        param_grid = [{'svm__coef0': [1, 2, 3, 4, 5], 'svm__degree': [2, 3, 4, 5], 'svm__C': [1, 2], 'svm__gamma': [0, 1]}]
-        print 'tuning params'
-        clf = GridSearchCV(pipeline, param_grid, n_jobs=-1, cv=cv)
-        clf.fit(data, labels)
-
-        print 'best parameters found:'
-        print clf.best_estimator_
-        return clf.best_estimator_
-
-    def train(self, optimise_params):
-        """
-        Train the model on selected training set
-        """
-        data, labels = self.get_training_data()
-
-        # convert from dict into np array
-        data = self.vec.fit_transform(data).toarray()
-
-        # TODO is optimising the parameters worth it or not useful for results?
-        if optimise_params:
-            optimal = self.tune_parameters(data, labels)
-            best_coef = optimal.named_steps['svm'].coef0
-            best_degree = optimal.named_steps['svm'].degree
-            best_c = optimal.named_steps['svm'].C
-            best_gamma = optimal.named_steps['svm'].gamma
-
-            # set up pipeline to normalise the data then build the model
-            # TODO check what the deal is with auto weighting the classes...
-            clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, C=best_c, gamma=best_gamma,
-                                        cache_size=1000))])
-                            #('svm', SVC(kernel='poly', coef0=best_coef, degree=best_degree, gamma=1, cache_size=1000,
-                                        #class_weight='auto'))])
-        else:
-            # set up pipeline to normalise the data then build the model
-            clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                            ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
-                            #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000,
-                                        #class_weight='auto'))])
-                            #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
-                            #('svm', SVC(kernel='sigmoid', cache_size=1000))])
-                            #('svm', SVC(kernel='linear', cache_size=1000))])
-                            #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False, n_jobs=-1))])
-
-        # train the model
-        clf.fit(data, labels)
-
-        return clf
-
-    def classify(self, record):
-        """
-        Classify given record and write prediction to table
-        """
-        # list is expected when generating features so put the record in a list
-        data = self.extractor.generate_features([record], no_class=True)
-        #print data
-        data = self.vec.transform(data).toarray()
-        # TODO speed up the classification by classifying everything in one go?
-        # predict returns an array so need to remove element
-        prediction = self.clf.predict(data)[0]
-        # calculate distance from separating hyperplane as measure of confidence
-        confidence = abs(self.clf.decision_function(data)[0][0])
-
-        with sqlite3.connect(self.db_path) as db:
-            cursor = db.cursor()
-            # by default want to train on all examples with a 'correct' classification
-            cursor.execute('''INSERT INTO predictions
-                                     VALUES (NULL, ?, ?, ?, ?);''',
-                           (record['rel_id'], self.user_id, prediction, confidence))
-                           #(record['rel_id'], self.user_id, prediction))

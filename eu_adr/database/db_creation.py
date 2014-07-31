@@ -83,13 +83,6 @@ def create_tables(db_name, new=True):
                                                        FOREIGN KEY(clsf_id) REFERENCES users(user_id),
                                                        FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
-def do_it():
-    with sqlite3.connect('new_query.db') as db:
-        cursor = db.cursor()
-    cursor.execute('''CREATE TABLE classifier_data_balanced(clsf_id INTEGER,
-                                                                training_rel INTEGER,
-                                                       FOREIGN KEY(clsf_id) REFERENCES users(user_id),
-                                                       FOREIGN KEY(training_rel) REFERENCES relations(rel_id));''')
 
 def populate_sentences(db_name):
     """
@@ -214,6 +207,5 @@ if __name__ == '__main__':
     #create_classifier_table()
     #clean_biotext_relations()
     #boom()
-    #initial_setup('relex_new.db')
+    initial_setup('relex_new.db')
     #clean_biotext_relations('relex_new.db')
-    do_it()

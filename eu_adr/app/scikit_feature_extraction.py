@@ -9,7 +9,7 @@ class FeatureExtractor():
     """
     Class for extracting features from previously tagged and chunked sets of words
     """
-    def __init__(self, word_features=False, word_gap=False, count_dict=True, phrase_count=True):
+    def __init__(self, word_features=False, word_gap=True, count_dict=True, phrase_count=True):
         """
         Store variables for which features to use
         """
