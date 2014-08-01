@@ -12,6 +12,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 from eu_adr.app.feature_extractor import FeatureExtractor
 
@@ -25,7 +26,7 @@ def create_results():
     clf = build_pipeline()
 
     # set up output file
-    with open('results/feature_selection.csv', 'wb') as f_out:
+    with open('results/feature_selection_poly.csv', 'wb') as f_out:
         csv_writer = csv.writer(f_out, delimiter=',')
         csv_writer.writerow(['features', 'accuracy', 'true_P', 'true_R', 'true_F',
                              'false_P', 'false_R', 'false_F', 'average_P', 'average_R', 'average_F'])
@@ -34,6 +35,7 @@ def create_results():
         extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'all')
 
+        '''
         # no word counting
         extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'no word count')
@@ -45,6 +47,25 @@ def create_results():
         # non counting dictionaries
         extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'non-counting dict')
+        '''
+
+        # non counting dictionaries
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False)
+        write_scores(csv_writer, clf, extractor, 'non-counting dict')
+
+
+def build_pipeline():
+    """
+    Set up classfier here to avoid repetition
+    """
+    # TODO what type of kernel to use?
+    clf = Pipeline([('normaliser', preprocessing.Normalizer()),
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='linear'))])
+                    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
+                    # n_jobs=-1))])
+    return clf
 
 
 def write_scores(csv_writer, clf, extractor, features):
@@ -110,24 +131,6 @@ def load_features_data(extractor):
     return extractor.generate_features(records, balance_classes=False)
 
 
-def build_pipeline():
-    """
-    Set up classfier here to avoid repetition
-    """
-    # TODO what type of kernel to use?
-    clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    #('svm', SVC(kernel='rbf', gamma=10))])
-                    #('svm', SVC(kernel='sigmoid'))])
-                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
-    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000, class_weight='auto'))])
-    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
-    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, class_weight='auto'))])
-    #('svm', SVC(kernel='linear'))])
-    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
-    #n_jobs=-1))])
-    return clf
-
-
 def get_scores(clf, train_data, train_labels, test_data, test_labels):
     """
     Return array of scores
@@ -139,6 +142,13 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     # classify the test data
     predicted = clf.predict(test_data)
     # evaluate scores
+    auroc = metrics.roc_auc_score(test_labels, predicted)
+    print auroc
+    confidence = clf.decision_function(test_data)
+    fpr, tpr, thresholds = metrics.roc_curve(test_labels, confidence)
+    print fpr
+    print tpr
+    print thresholds
     scores = precision_recall_fscore_support(test_labels, predicted)
     #print metrics.classification_report(test_labels, predicted)
 
@@ -146,5 +156,40 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     return np.array([scores[0], scores[1], scores[2]]), accuracy
 
 
+def plot_roc_curve():
+    """
+    Plot roc curve, not cross validated for now
+    """
+    clf = build_pipeline()
+    extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=True)
+
+    features, labels = load_features_data(extractor)
+    # transform from dict into array for training
+    vec = DictVectorizer()
+    data = vec.fit_transform(features).toarray()
+
+    # split data into train and test, may want to use cross validation later
+    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.9,
+                                                                                         random_state=0)
+    clf.fit(train_data, train_labels)
+
+    confidence = clf.decision_function(test_data)
+    fpr, tpr, thresholds = metrics.roc_curve(test_labels, confidence)
+    auroc = metrics.auc(fpr, tpr)
+
+    print len(fpr), len(tpr)
+    # set up the figure
+    plt.figure()
+    #plt.grid()
+    plt.xlabel('FP rate')
+    plt.ylabel('TP rate')
+    plt.title('Receiver operating characteristic')
+    plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % auroc)
+    plt.plot([0, 1], [0, 1], 'k--')
+
+    plt.legend(loc='best')
+    plt.savefig('results/roc.png', format='png')
+
 if __name__ == '__main__':
-    create_results()
+    #create_results()
+    plot_roc_curve()
