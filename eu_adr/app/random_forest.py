@@ -13,11 +13,15 @@ class RandomForest(Classifier):
     Random forest classifier
     """
 
-    def train(self, optimise_params):
+    def train(self, optimise_params, records=None):
         """
         Train the model on selected training set
         """
-        data, labels = self.get_training_data()
+        if records:
+            data, labels = self.extractor.generate_features(records)
+        # otherwise use the data from database
+        else:
+            data, labels = self.get_training_data()
 
         data = self.vec.fit_transform(data).toarray()
 

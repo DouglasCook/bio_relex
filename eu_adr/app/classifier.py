@@ -16,18 +16,20 @@ class Classifier():
     # set up vectoriser for transforming data from dictionary to numpy array
     vec = DictVectorizer()
 
-    def __init__(self, f_extractor, optimise_params=False, no_biotext=False):
+    def __init__(self, f_extractor, use_db=False, optimise_params=False, no_biotext=False):
         # save feature extractor passed to constructor
         self.extractor = f_extractor
 
-        # set up user record for the classifier
-        self.user_id = self.create_user()
+        # if want to save training set and predictions to database
+        if use_db:
+            # set up user record for the classifier
+            self.user_id = self.create_user()
 
-        # save records used for training for later experimentation with different classifiers
-        self.create_training_set(no_biotext)
+            # save records used for training for later experimentation with different classifiers
+            self.create_training_set(no_biotext)
 
-        # set up classifier pipeline, uses train function implemented in subclasses
-        self.clf = self.train(optimise_params)
+            # set up classifier pipeline, uses train function implemented in subclasses
+            self.clf = self.train(optimise_params)
 
     def create_user(self):
         """

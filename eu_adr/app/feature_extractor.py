@@ -1,8 +1,9 @@
 import re
 import nltk
 import pickle
-import sqlite3
 import random
+import sqlite3
+import numpy as np
 
 
 class FeatureExtractor():
@@ -62,7 +63,8 @@ class FeatureExtractor():
         elif balance_classes:
             feature_vectors, class_vector = self.balance_classes(feature_vectors, class_vector)
 
-        return feature_vectors, class_vector
+        # return data as numpy array for easier processing
+        return np.array(feature_vectors), np.array(class_vector)
 
     def part_feature_vectors(self, tags, which_set):
         """

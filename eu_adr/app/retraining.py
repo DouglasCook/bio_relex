@@ -5,7 +5,7 @@ from classifier import Classifier
 from svm import SVMlinear, SVMpoly, SVMrbf
 from random_forest import RandomForest
 
-from scikit_feature_extraction import FeatureExtractor
+from feature_extractor import FeatureExtractor
 
 db_path = utility.build_filepath(__file__, '../database/relex.db')
 
@@ -43,9 +43,10 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     f_extractor = FeatureExtractor(word_gap=True)
     # set up classifier with link to feature extractor
     #clf = Classifier(f_extractor, optimise_params, no_biotext)
-    #clf = SVMlinear(f_extractor, optimise_params, no_biotext)
-    #clf = SVMpoly(f_extractor, optimise_params, no_biotext)
-    clf = SVMrbf(f_extractor, optimise_params, no_biotext)
+    #clf = SVMlinear(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
+    #clf = SVMpoly(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
+    clf = SVMrbf(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
+    #clf = RandomForest(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
 
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff

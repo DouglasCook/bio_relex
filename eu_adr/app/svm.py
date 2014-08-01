@@ -37,11 +37,16 @@ class SVMlinear(SVM):
     """
     SVM with linear kernel
     """
-    def train(self, optimise_params):
+    def train(self, optimise_params, records=None):
         """
-        Train the model on selected training set
+        Train the model on training set saved in db or on the records passed in
         """
-        data, labels = self.get_training_data()
+        # if the records have been passed in directly use them
+        if records:
+            data, labels = self.extractor.generate_features(records)
+        # otherwise use the data from database
+        else:
+            data, labels = self.get_training_data()
         # convert from dict into np array
         data = self.vec.fit_transform(data).toarray()
 
@@ -89,11 +94,16 @@ class SVMpoly(SVM):
     """
     SVM with polynomial kernel
     """
-    def train(self, optimise_params):
+    def train(self, optimise_params, records=None):
         """
         Train the model on selected training set
         """
-        data, labels = self.get_training_data()
+        # if the records have been passed in directly use them
+        if records:
+            data, labels = self.extractor.generate_features(records)
+        # otherwise use the data from database
+        else:
+            data, labels = self.get_training_data()
         # convert from dict into np array
         data = self.vec.fit_transform(data).toarray()
 
@@ -146,12 +156,16 @@ class SVMrbf(SVM):
     """
     SVM with radial basis function kernel
     """
-    def train(self, optimise_params):
+    def train(self, optimise_params, records=None):
         """
         Train the model on selected training set
         """
-        data, labels = self.get_training_data()
-
+        # if the records have been passed in directly use them
+        if records:
+            data, labels = self.extractor.generate_features(records)
+        # otherwise use the data from database
+        else:
+            data, labels = self.get_training_data()
         # convert from dict into np array
         data = self.vec.fit_transform(data).toarray()
 
