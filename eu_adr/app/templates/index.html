@@ -11,12 +11,17 @@
     <body>
         <!-- highlight the entities based on type -->
         {% if drug_first %}
-            <p><strong>Sentence</strong>: {{before}}<span id=drug>{{e1}}</span>{{between}}<span id=disorder>{{e2}}</span>{{after}}</p>
+            <p><strong>Sentence</strong>: {{before}}<span id="drug">{{e1}}</span>{{between}}<span id="disorder">{{e2}}</span>{{after}}</p>
         {% else %}
-            <p><strong>Sentence</strong>: {{before}}<span id=disorder>{{e1}}</span>{{between}}<span id=drug>{{e2}}</span>{{after}}</p>
+            <p><strong>Sentence</strong>: {{before}}<span id="disorder">{{e1}}</span>{{between}}<span id="drug">{{e2}}</span>{{after}}</p>
         {% endif %}
 
-        <p><strong>Classified as </strong>{{classification}}</p>
+        <p><strong>Full abstract </strong> available <a href="{{link}}" target="_blank">here</a></p>
+
+        <p>
+            <strong>Classified as </strong>{{classification}}<br>
+            A relationship between a <span id="drug">drug</span> and <span id="disorder">indication</span> is considered to be true if
+        </p>
 
         <form action="/save" method="post">
             <p>Which of the below is the <strong>correct</strong> classification?<br>
@@ -28,8 +33,13 @@
                     <input type="radio" name="class" value="1"> True<br>
                     <input type="radio" name="class" value="0" checked = "true"> False<br>
                 {% endif %}
-                <input type="radio" name="class" value="2"> Incorrect entity recognition<br>
-                <input type="submit" value="Submit"></p>
+                <input type="radio" name="class" value="2"> Incorrect entity recognition<br><br>
+
+                Please add any reasoning behind your decision in the box below if required:
+                <textarea name="reason" rows="4" cols="60"></textarea><br>
+
+                <input type="submit" value="Submit">
+            </p>
         </form>
     </body>
 </html>

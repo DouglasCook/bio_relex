@@ -84,22 +84,22 @@ def add_to_relations():
             treatments = [k for k in entity_dict if entity_dict[k][0] == 'Drug']
 
             # loop through all pairs
-            for t in treatments:
-                treat_dict = entity_dict[t]
-                for d in disorders:
-                    dis_dict = entity_dict[d]
+            for treat in treatments:
+                treat_dict = entity_dict[treat]
+                for disorder in disorders:
+                    dis_dict = entity_dict[disorder]
 
                     # split sentence dependent on which entity appears first
                     if treat_dict[1] < dis_dict[1]:
-                        e1, e2 = t, d
-                        type1, type2 = 'Disorder', 'Drug'
+                        e1, e2 = treat, disorder
+                        type1, type2 = 'Drug', 'Disorder'
                         start1, start2 = treat_dict[1], dis_dict[1]
                         end1, end2 = treat_dict[2], dis_dict[2]
                     else:
-                        e2, e1 = t, d
-                        type2, type1 = 'Disorder', 'Drug'
-                        start2, start1 = treat_dict[1], dis_dict[1]
-                        end2, end1 = treat_dict[2], dis_dict[2]
+                        e1, e2 = disorder, treat
+                        type1, type2 = 'Disorder', 'Drug'
+                        start1, start2 = dis_dict[1], treat_dict[1]
+                        end1, end2 = dis_dict[2], treat_dict[2]
 
                     before, between, after = split_sentence(row['sentence'], start1, end1, start2, end2)
                     # tag and chunk the parts of sentence

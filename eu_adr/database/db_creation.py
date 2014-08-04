@@ -54,6 +54,7 @@ def create_tables(db_name, new=True):
                                                  rel_id INTEGER,
                                                  user_id INTEGER,
                                                  decision INTEGER,
+                                                 reason TEXT,
                                                  FOREIGN KEY(rel_id) REFERENCES relations,
                                                  FOREIGN KEY(user_id) REFERENCES users);''')
 

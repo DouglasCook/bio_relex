@@ -76,7 +76,6 @@ def select_relations(user_id):
                            ORDER BY predictions.confidence_value;''', [user_id])
 
         """
-        """
         # THIS JUST TAKES EVERYTHING THAT HAS NOT BEEN HUMAN ANNOTATED
         cursor.execute('''SELECT rel_id
                           FROM relations
@@ -96,6 +95,7 @@ def select_relations(user_id):
                                 relations.rel_id NOT IN (SELECT rel_id
                                                          FROM decisions
                                                          WHERE decisions.user_id = ?);''', [user_id])
+        """
 
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
@@ -141,7 +141,7 @@ def classify():
     Display next relation to be classified
     """
     next_rel = session['rels_to_classify'][int(session['next_index'])]
-    before, between, after, e1, e2, prediction, type1 = return_relation(next_rel)
+    before, between, after, e1, e2, prediction, type1, link = return_relation(next_rel)
 
     # set radio button to pre check the classifiers prediction
     if prediction:
@@ -158,7 +158,7 @@ def classify():
         drug_first = False
 
     return render_template('index.html', before=before, between=between, after=after, classification=pred,
-                           e1=e1, e2=e2, true_check=true_check, drug_first=drug_first)
+                           e1=e1, e2=e2, true_check=true_check, drug_first=drug_first, link=link)
 
 
 def return_relation(rel_id):
@@ -169,6 +169,7 @@ def return_relation(rel_id):
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
         cursor.execute('''SELECT sentences.sentence,
+                                 sentences.pubmed_id,
                                  relations.entity1,
                                  relations.type1,
                                  relations.start1,
@@ -187,10 +188,14 @@ def return_relation(rel_id):
                                                        WHERE type = 'classifier');''', [rel_id])
 
         row = cursor.fetchone()
+
+        # split sentence to render around entities
         before, between, after = utility.split_sentence(row['sentence'], row['start1'], row['end1'], row['start2'],
                                                         row['end2'])
+        # build link to full abstract for context
+        link = 'http://www.ncbi.nlm.nih.gov/pubmed/?term=%s' % row['pubmed_id']
 
-        return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1']
+        return before, between, after, row['entity1'], row['entity2'], row['decision'], row['type1'], link
 
 
 @app.route('/save', methods=['POST'])
@@ -199,7 +204,7 @@ def record_decision():
     Save annotators decision and redirect to next relation to be classified
     """
     # write decision to the database
-    store_decision(request.form['class'])
+    store_decision(request.form['class'], request.form['reason'])
 
     # redirect to finished page if there are no remaining relations
     if session['next_index'] == session['number_rels'] - 1:
@@ -223,7 +228,7 @@ def record_decision():
     return redirect('/classify')
 
 
-def store_decision(classification):
+def store_decision(classification, reason):
     """
     Record the annotators classification
     """
@@ -232,9 +237,16 @@ def store_decision(classification):
 
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
-        cursor.execute('''INSERT into decisions
-                          VALUES (NULL, ?, ?, ?)''',
-                       (rel_id, user_id, classification))
+
+        # if reason is given add it to the table
+        if reason:
+            cursor.execute('''INSERT into decisions
+                              VALUES (NULL, ?, ?, ?, ?)''',
+                           (rel_id, user_id, classification, reason))
+        else:
+            cursor.execute('''INSERT into decisions
+                              VALUES (NULL, ?, ?, ?, NULL)''',
+                           (rel_id, user_id, classification))
 
         # set bad NER to true if annotator believes it is
         # ideally this wouldn't happen here, it would need to be a majority decision so would be in retraining
