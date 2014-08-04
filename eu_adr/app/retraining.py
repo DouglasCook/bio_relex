@@ -40,12 +40,12 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     Call classifier to predict values of remaining unclassified instances
     """
     # set up feature extractor with desired parameters
-    f_extractor = FeatureExtractor(word_gap=True)
+    f_extractor = FeatureExtractor()
     # set up classifier with link to feature extractor
     #clf = Classifier(f_extractor, optimise_params, no_biotext)
     #clf = SVMlinear(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
-    #clf = SVMpoly(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
-    clf = SVMrbf(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
+    clf = SVMpoly(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
+    #clf = SVMrbf(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
     #clf = RandomForest(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
 
     with sqlite3.connect(db_path) as db:
@@ -118,6 +118,6 @@ def update():
 
 if __name__ == '__main__':
     #update_correct_classifications()
-    classify_remaining(optimise_params=False, no_biotext=False)
+    #classify_remaining(optimise_params=False, no_biotext=False)
     count_true_false_predictions()
     #delete_decisions()

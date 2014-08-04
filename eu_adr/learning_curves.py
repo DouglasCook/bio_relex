@@ -11,17 +11,18 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 
-from eu_adr.app.feature_extractor import FeatureExtractor
+from app.feature_extractor import FeatureExtractor
+from app.utility import time_stamped
 
 
 def learning_curves(repeats=10):
     """
     Plot learning curve thingies
     """
-    features, labels = load_features_data(eu_adr_only=False)
+    data, labels = load_features_data(eu_adr_only=False)
     # convert from dict into np array
     vec = DictVectorizer()
-    data = vec.fit_transform(features).toarray()
+    data = vec.fit_transform(data).toarray()
 
     samples_per_split = len(data)/10
     scores = np.zeros(shape=(repeats, 9, 3, 2))
@@ -72,7 +73,7 @@ def build_pipeline():
     Set up classfier here to avoid repetition
     """
     # TODO what type of kernel to use?
-    clf = Pipeline([('normaliser', preprocessing.Normalizer()),
+    clf = Pipeline([('normaliser', preprocessing.Normalizer(norm='l2')),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
                     ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
@@ -97,8 +98,8 @@ def get_data_points(data, labels, j):
 
     # first split at 10%
     train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1,
-                                                                                         #random_state=j)
-                                                                                         random_state=None)
+                                                                                         random_state=j)
+                                                                                         #random_state=None)
     no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(train_data, train_labels, test_data, test_labels)
 
@@ -106,8 +107,8 @@ def get_data_points(data, labels, j):
     for i in xrange(1, 9):
         more_data, test_data, more_labels, test_labels = cross_validation.train_test_split(test_data, test_labels,
                                                                                            train_size=no_samples,
-                                                                                           #random_state=i*j)
-                                                                                           random_state=None)
+                                                                                           random_state=i*j)
+                                                                                           #random_state=None)
         # add the new training data to existing
         train_data = np.append(train_data, more_data, axis=0)
         train_labels = np.append(train_labels, more_labels)
@@ -191,13 +192,6 @@ def plot(ticks, true, false, scoring, filepath):
 
     plt.savefig(filepath, format='png')
     plt.clf()
-
-
-def time_stamped(fname, fmt='%Y-%m-%d-%H-%M-%S_{fname}'):
-    """
-    Add a timestamp to start of filename
-    """
-    return datetime.datetime.now().strftime(fmt).format(fname=fname)
 
 if __name__ == '__main__':
     learning_curves(repeats=20)

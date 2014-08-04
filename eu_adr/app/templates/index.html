@@ -19,8 +19,12 @@
         <p><strong>Full abstract </strong> available <a href="{{link}}" target="_blank">here</a></p>
 
         <p>
-            <strong>Classified as </strong>{{classification}}<br>
-            A relationship between a <span id="drug">drug</span> and <span id="disorder">indication</span> is considered to be true if
+            <strong>Classified as </strong>{{classification}}<br><br>
+        </p>
+
+        <p>
+            If the sentence describes use of the <span id="drug">drug</span> for treating the <span id="disorder">indication</span>
+            or the potential for the drug to be used to treat the indication then we consider there to be a true relationship between them.
         </p>
 
         <form action="/save" method="post">

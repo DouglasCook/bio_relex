@@ -1,5 +1,5 @@
 import sqlite3  # should be able to access this from parent but not working for some reason
-from classifier import Classifier
+import numpy as np
 
 from sklearn import preprocessing
 from sklearn.pipeline import Pipeline
@@ -7,12 +7,13 @@ from sklearn.svm import SVC
 from sklearn import cross_validation
 from sklearn.grid_search import GridSearchCV
 
+from classifier import Classifier
+
 
 class SVM(Classifier):
     """
     Support vector machine classifier
     """
-
     def classify(self, record):
         """
         Classify given record and write prediction and confidence measure to table
@@ -80,7 +81,7 @@ class SVMlinear(SVM):
                              ('svm', SVC(kernel='linear', cache_size=1000))])
 
         # only have error value to play with for linear kernel
-        param_grid = [{'svm__C': [1, 2, 3, 4, 5]}]
+        param_grid = [{'svm__C': np.linspace(0.1, 1, 10)}]
         print 'tuning params'
         clf = GridSearchCV(pipeline, param_grid, n_jobs=-1, cv=cv)
         clf.fit(data, labels)

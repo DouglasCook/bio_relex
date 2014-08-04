@@ -14,7 +14,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 
-from eu_adr.app.feature_extractor import FeatureExtractor
+from app.feature_extractor import FeatureExtractor
+from app.utility import time_stamped
 
 
 def create_results():
@@ -47,11 +48,11 @@ def create_results():
         # non counting dictionaries
         extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'non-counting dict')
-        '''
 
         # non counting dictionaries
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False)
         write_scores(csv_writer, clf, extractor, 'non-counting dict')
+        '''
 
 
 def build_pipeline():
@@ -116,7 +117,6 @@ def load_features_data(extractor):
     """
     Load some part of data
     """
-
     with sqlite3.connect('database/euadr_biotext.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
@@ -188,7 +188,8 @@ def plot_roc_curve():
     plt.plot([0, 1], [0, 1], 'k--')
 
     plt.legend(loc='best')
-    plt.savefig('results/roc.png', format='png')
+    filepath = 'results/' + time_stamped('roc.png')
+    plt.savefig(filepath, format='png')
 
 if __name__ == '__main__':
     #create_results()
