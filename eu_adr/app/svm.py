@@ -25,6 +25,7 @@ class SVM(Classifier):
         # predict returns an array so need to remove element
         prediction = self.clf.predict(data)[0]
         # calculate distance from separating hyperplane as measure of confidence
+        # zero zero index since only one element is being classified
         confidence = abs(self.clf.decision_function(data)[0][0])
 
         with sqlite3.connect(self.db_path) as db:
