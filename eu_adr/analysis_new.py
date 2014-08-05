@@ -29,12 +29,16 @@ def create_results():
     # set up output file
     with open('results/feature_selection_poly.csv', 'wb') as f_out:
         csv_writer = csv.writer(f_out, delimiter=',')
-        csv_writer.writerow(['features', 'accuracy', 'true_P', 'true_R', 'true_F',
+        csv_writer.writerow(['features', 'accuracy', 'auroc', 'true_P', 'true_R', 'true_F',
                              'false_P', 'false_R', 'false_F', 'average_P', 'average_R', 'average_F'])
 
         # first with all features
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True)
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, word_features=True, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'all')
+
+        # first with all features
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True)
+        write_scores(csv_writer, clf, extractor, 'no word specific')
 
         '''
         # no word counting
@@ -73,10 +77,10 @@ def write_scores(csv_writer, clf, extractor, features):
     """
     Write one set of scores to csv
     """
-    scores, accuracy = cross_validated_scores(clf, extractor)
+    scores, accuracy, auroc = cross_validated_scores(clf, extractor)
 
     for i in xrange(10):
-        row = [features, accuracy[i],
+        row = [features, accuracy[i], auroc[i],
                scores[i, 0, 1], scores[i, 1, 1], scores[i, 2, 1],  # true relations
                scores[i, 0, 0], scores[i, 1, 0], scores[i, 2, 0],  # false relations
                (scores[i, 0, 1] + scores[i, 0, 0])/2, (scores[i, 1, 1] + scores[i, 1, 0])/2,  # averages
@@ -92,6 +96,7 @@ def cross_validated_scores(clf, extractor):
     # set up array to hold scores
     scores = np.zeros(shape=(10, 3, 2))
     accuracy = np.zeros(shape=10)
+    auroc = np.zeros(shape=10)
 
     features, labels = load_features_data(extractor)
     # transform from dict into array for training
@@ -106,11 +111,11 @@ def cross_validated_scores(clf, extractor):
         train_data, test_data = data[train], data[test]
         train_labels, test_labels = labels[train], labels[test]
 
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+        scores[i], accuracy[i], auroc[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     #print 'precision, recall, f1\n', scores
     #print 'accuracy\n', accuracy
-    return scores, accuracy
+    return scores, accuracy, auroc
 
 
 def load_features_data(extractor):
@@ -139,21 +144,22 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     clf.fit(train_data, train_labels)
     # calculate mean accuracy since not included in other set of scores
     accuracy = clf.score(test_data, test_labels)
+
     # classify the test data
     predicted = clf.predict(test_data)
-    # evaluate scores
+    # evaluate auroc and R, P, F scores
     auroc = metrics.roc_auc_score(test_labels, predicted)
-    print auroc
-    confidence = clf.decision_function(test_data)
-    fpr, tpr, thresholds = metrics.roc_curve(test_labels, confidence)
-    print fpr
-    print tpr
-    print thresholds
     scores = precision_recall_fscore_support(test_labels, predicted)
     #print metrics.classification_report(test_labels, predicted)
 
-    # return precision, recall and f1
-    return np.array([scores[0], scores[1], scores[2]]), accuracy
+    # ROC STUFF
+    #confidence = clf.decision_function(test_data)
+    #fpr, tpr, thresholds = metrics.roc_curve(test_labels, confidence)
+    #print fpr
+    #print tpr
+    #print thresholds
+
+    return np.array([scores[0], scores[1], scores[2]]), accuracy, auroc
 
 
 def plot_roc_curve():
@@ -161,7 +167,7 @@ def plot_roc_curve():
     Plot roc curve, not cross validated for now
     """
     clf = build_pipeline()
-    extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=True)
+    extractor = FeatureExtractor(word_gap=True, word_features=True, count_dict=True, phrase_count=True)
 
     features, labels = load_features_data(extractor)
     # transform from dict into array for training
@@ -170,7 +176,7 @@ def plot_roc_curve():
 
     # split data into train and test, may want to use cross validation later
     train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.9,
-                                                                                         random_state=0)
+                                                                                         random_state=1)
     clf.fit(train_data, train_labels)
 
     confidence = clf.decision_function(test_data)
@@ -192,5 +198,5 @@ def plot_roc_curve():
     plt.savefig(filepath, format='png')
 
 if __name__ == '__main__':
-    #create_results()
-    plot_roc_curve()
+    create_results()
+    #plot_roc_curve()

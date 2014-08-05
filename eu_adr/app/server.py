@@ -120,7 +120,7 @@ def remaining_to_do(user_id):
                           FROM relations
                           WHERE true_rel IS NOT NULL''')
         # want to retrain once we have 5% more data - python 2 so will floor the result
-        to_do = cursor.fetchone()[0]/200
+        to_do = cursor.fetchone()[0]/20
         print 'to do', to_do
 
         # now count all classifications done since last retraining

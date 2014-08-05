@@ -1,8 +1,7 @@
 import re
+import operator
 import nltk
-import pickle
 import random
-import sqlite3
 import numpy as np
 
 
@@ -10,18 +9,23 @@ class FeatureExtractor():
     """
     Class for extracting features from previously tagged and chunked sets of words
     """
+    # stopwords for use in cleaning up sentences
+    stopwords = nltk.corpus.stopwords.words('english')
+
     def __init__(self, word_features=False, word_gap=True, count_dict=True, phrase_count=True):
         """
         Store variables for which features to use
         """
-        # stopwords for use in cleaning up sentences
-        self.stopwords = nltk.corpus.stopwords.words('english')
-
-        # types of features
+        # types of features to be extracted
         self.word_features = word_features
         self.word_gap = word_gap
         self.count_dict = count_dict
         self.phrase_count = phrase_count
+
+        # create dicts for word features if they are going to be used
+        if word_features:
+            self.bef_verb_dict, self.bet_verb_dict, self.aft_verb_dict = {}, {}, {}
+            self.bef_noun_dict, self.bet_noun_dict, self.aft_noun_dict = {}, {}, {}
 
     def generate_features(self, records, no_class=False, balance_classes=False):
         """
@@ -31,20 +35,17 @@ class FeatureExtractor():
         feature_vectors = []
         class_vector = []
 
+        # create dictionaries if word features are going to be used
+        if self.word_features:
+            self.create_dictionaries(records)
+
         for row in records:
-            # need to evaluate field if coming from pickled data
+            # store class label
             if not no_class:
-                try:
-                    if eval(row['true_rel']):
-                        class_vector.append(1)
-                    else:
-                        class_vector.append(0)
-                # otherwise can use it straight?
-                except:
-                    if row['true_rel']:
-                        class_vector.append(1)
-                    else:
-                        class_vector.append(0)
+                if row['true_rel']:
+                    class_vector.append(1)
+                else:
+                    class_vector.append(0)
 
             # don't think there's any need to have both types since one implies the other
             #f_vector = {'type1': row['type1'], 'type2': row['type2']}
@@ -73,7 +74,7 @@ class FeatureExtractor():
         f_dict = {}
 
         # TODO is word gap actually useful? maybe for between only?
-        if self.word_gap:
+        if self.word_gap and which_set == 'between':
             f_dict[which_set] = len(tags)
         # add word gap for between words
         #if which_set == 'between':
@@ -94,9 +95,9 @@ class FeatureExtractor():
 
         if self.word_features:
             # WORDS - check for presence of particular words
-            if which_set != 'after':
-                words = [t[0] for t in tags if not re.match('.?\d', t[0])]
-                f_dict.update(self.word_check(words, which_set))
+            verbs = [t[0] for t in tags if t[1][0] == 'V']
+            nouns = [t[0] for t in tags if t[1][0] == 'N']
+            f_dict.update(self.word_check(verbs, nouns, which_set))
 
         # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
         pos = [t[1] for t in tags if t[1] != '-NONE-']
@@ -130,6 +131,107 @@ class FeatureExtractor():
 
         return f_dict
 
+    def create_dictionaries(self, records):
+        """
+        Create dictionaries for all verbs and nouns occurring in each part of the sentence
+        Words are stemmed before being written to database
+        """
+        # TODO make this function less massive!
+        bef_verbs, bef_nouns, bet_verbs, bet_nouns, aft_verbs, aft_nouns = [], [], [], [], [], []
+
+        # first create dictionaries of all terms
+        # this makes counting terms much faster since don't need to check if key exists
+        for row in records:
+            # only consider between words for now
+            before = [t for t in eval(row['before_tags']) if t[0] not in self.stopwords]
+            bef_verbs.extend([t[0] for t in before if t[1][0] == 'V'])
+            bef_nouns.extend([t[0] for t in before if t[1][0] == 'N'])
+
+            between = [t for t in eval(row['between_tags']) if t[0] not in self.stopwords]
+            bet_verbs.extend([t[0] for t in between if t[1][0] == 'V'])
+            bet_nouns.extend([t[0] for t in between if t[1][0] == 'N'])
+
+            after = [t for t in eval(row['after_tags']) if t[0] not in self.stopwords]
+            aft_verbs.extend([t[0] for t in after if t[1][0] == 'V'])
+            aft_nouns.extend([t[0] for t in after if t[1][0] == 'N'])
+
+        bef_verb_dict = {v: 0 for v in set(bef_verbs)}
+        bef_noun_dict = {n: 0 for n in set(bef_nouns)}
+
+        bet_verb_dict = {v: 0 for v in set(bet_verbs)}
+        bet_noun_dict = {n: 0 for n in set(bet_nouns)}
+
+        aft_verb_dict = {v: 0 for v in set(aft_verbs)}
+        aft_noun_dict = {n: 0 for n in set(aft_nouns)}
+
+        # now loop through and count occurrences
+        for row in records:
+            before = [t for t in eval(row['before_tags']) if t[0] not in self.stopwords]
+            for t in before:
+                if t[1][0] == 'V':
+                    bef_verb_dict[t[0]] += 1
+                elif t[1][0] == 'N':
+                    bef_noun_dict[t[0]] += 1
+
+            between = [t for t in eval(row['between_tags']) if t[0] not in self.stopwords]
+            for t in between:
+                if t[1][0] == 'V':
+                    bet_verb_dict[t[0]] += 1
+                elif t[1][0] == 'N':
+                    bet_noun_dict[t[0]] += 1
+
+            after = [t for t in eval(row['after_tags']) if t[0] not in self.stopwords]
+            for t in after:
+                if t[1][0] == 'V':
+                    aft_verb_dict[t[0]] += 1
+                elif t[1][0] == 'N':
+                    aft_noun_dict[t[0]] += 1
+
+        # now order by occurrence descending and store
+        bef_verb_dict = sorted(bef_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        bef_noun_dict = sorted(bef_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        self.bef_verb_dict = [x[0] for x in bef_verb_dict[:5]]
+        self.bef_noun_dict = [x[0] for x in bef_noun_dict[:5]]
+
+        bet_verb_dict = sorted(bet_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        bet_noun_dict = sorted(bet_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        self.bet_verb_dict = [x[0] for x in bet_verb_dict[:5]]
+        self.bet_noun_dict = [x[0] for x in bet_noun_dict[:5]]
+
+        aft_verb_dict = sorted(aft_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        aft_noun_dict = sorted(aft_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
+        self.aft_verb_dict = [x[0] for x in aft_verb_dict[:5]]
+        self.aft_noun_dict = [x[0] for x in aft_noun_dict[:5]]
+
+    def word_check(self, verbs, nouns, which_set):
+        """
+        Create features for most commonly occurring words in each part of sentence
+        Words are already stemmed so list contains stemmed versions
+        """
+        if which_set == 'before':
+            verb_list = self.bef_verb_dict
+            noun_list = self.bef_noun_dict
+        elif which_set == 'between':
+            verb_list = self.bet_verb_dict
+            noun_list = self.bet_noun_dict
+        else:
+            verb_list = self.aft_verb_dict
+            noun_list = self.aft_noun_dict
+
+        # if item doesn't exist in dict scikit vectoriser will default it to false
+        stem_dict = {}
+        for v in verb_list:
+            # if the stem is found in the words set to true in dictionary
+            if v in verbs:
+                # need to make sure the same stem in different part of sentence doesn't override existing value
+                stem_dict[which_set + '_v_' + v] = 1
+
+        for n in noun_list:
+            if n in nouns:
+                stem_dict[which_set + '_n_' + n] = 1
+
+        return stem_dict
+
     @staticmethod
     def balance_classes(feature_vectors, class_vector):
         """
@@ -162,33 +264,6 @@ class FeatureExtractor():
         return features, classes
 
     @staticmethod
-    def word_check(words, which_set):
-        """
-        Create features for words deemed particularly useful for classification dependent on part of sentence
-        Words are already stemmed so list contains stemmed versions
-        """
-        if which_set == 'before':
-            stem_list = ['conclus', 'effect', 'result', 'studi', 'use', 'background', 'compar', 'method',
-                         'object']
-        elif which_set == 'between':
-            stem_list = ['effect', 'therapi', 'treat', 'treatment', 'efficac', 'reliev', 'relief', 'increas', 'reduc']
-        else:
-            stem_list = ['patient', 'studi']
-
-        stem_dict = {}
-        # don't need to do this since scikit does it for you
-        # everything defaults to false
-        #stem_dict = {stem: 0 for stem in stem_list}
-
-        for stem in stem_list:
-            # if the stem is found in the words set to true in dictionary
-            if stem in words:
-                stem_dict[stem] = 1
-
-        #print stem_dict
-        return stem_dict
-
-    @staticmethod
     def counting_dict(tags):
         """
         Record counts of each tag present in tags and return as dictionary
@@ -215,46 +290,5 @@ class FeatureExtractor():
         return c_dict
 
 
-def pickle_features(eu_adr_only=False):
-    """
-    Create basic feature vector for each record
-    """
-    # only do this with the original data, don't want things getting overwritten
-    with sqlite3.connect('database/original_data.db') as db:
-        # using Row as row factory means can reference fields by name instead of index
-        db.row_factory = sqlite3.Row
-        cursor = db.cursor()
-
-        # may only want to look at sentences from eu-adr to start with
-        if eu_adr_only:
-            cursor.execute('''SELECT relations.*
-                              FROM relations NATURAL JOIN sentences
-                              WHERE sentences.source = 'EU-ADR';''')
-        else:
-            # want to create features for all relations in db, training test split will be done by scikit-learn
-            cursor.execute('''SELECT relations.*
-                              FROM relations NATURAL JOIN sentences
-                              WHERE sentences.source != 'pubmed';''')
-
-        records = cursor.fetchall()
-        extractor = FeatureExtractor()
-        feature_vectors, class_vector = extractor.generate_features(records)
-
-    if eu_adr_only:
-        pickle.dump(feature_vectors, open('pickles/scikit_data_eu_adr_only.p', 'wb'))
-        pickle.dump(class_vector, open('pickles/scikit_target_eu_adr_only.p', 'wb'))
-    else:
-        pickle.dump(feature_vectors, open('pickles/scikit_data.p', 'wb'))
-        pickle.dump(class_vector, open('pickles/scikit_target.p', 'wb'))
-
-
 if __name__ == '__main__':
-    pickle_features(eu_adr_only=True)
-    pickle_features(eu_adr_only=False)
-    #f = pickle.load(open('pickles/scikit_data.p', 'rb'))
-    #c = pickle.load(open('pickles/scikit_target.p', 'rb'))
-    #print c
-    #print f
-    #for i in xrange(20):
-        #print c[i], f[i]
-
+    pass
