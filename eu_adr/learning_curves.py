@@ -117,6 +117,42 @@ def get_data_points(data, labels, j):
     return scores, accuracy
 
 
+def get_data_points_nicer(data, labels, j):
+    """
+    Get set of data points for one curve
+    Want to add to the training data incrementally to mirror real life situtation
+    """
+    # TODO problem here is with the random state, how can I make the experiment repeatable?
+    # set up arrays to hold scores and indices
+    scores = np.zeros(shape=(9, 3, 2))
+    accuracy = np.zeros(shape=9)
+    train_indices = np.array([], dtype=int)
+
+    # set up stratified 10 fold cross validator, use specific random state for proper comparison
+    # passing specific random state in here means same split is used every time
+    cv = cross_validation.StratifiedKFold(labels, shuffle=True, n_folds=10, random_state=None)
+
+    # iterating through the cv gives lists of indices for each fold
+    # use test set for training since it is 10% of total data
+    # TODO better way to do this?
+    for i, (_, train) in enumerate(cv):
+        if i == 9:
+            print train_indices
+            break
+        # first add new fold to existing for training data and labels
+        train_indices = np.append(train_indices, train)
+        train_data = data[train_indices]
+        train_labels = labels[train_indices]
+
+        # then use complement for testing
+        test_data = np.delete(data, train_indices, 0)
+        test_labels = np.delete(labels, train_indices, 0)
+
+        scores[i], accuracy[i] = get_scores(train_data, train_labels, test_data, test_labels)
+
+    return scores, accuracy
+
+
 def get_scores(train_data, train_labels, test_data, test_labels):
     """
     Return array of scores
