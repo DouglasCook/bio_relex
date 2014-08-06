@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from sklearn import cross_validation
+from sklearn.cross_validation import train_test_split
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
@@ -16,7 +17,7 @@ from app.feature_extractor import FeatureExtractor
 from app.utility import time_stamped
 
 
-def learning_curves(repeats=10):
+def learning_curves(repeats):
     """
     Plot learning curve thingies
     """
@@ -27,13 +28,14 @@ def learning_curves(repeats=10):
     vec = DictVectorizer()
     data = vec.fit_transform(data).toarray()
 
-    samples_per_split = len(data)/10
-    scores = np.zeros(shape=(repeats, 9, 3, 2))
-    accuracy = np.zeros(shape=(repeats, 9))
+    samples_per_split = 0.09*len(data)
+    scores = np.zeros(shape=(repeats, 10, 3, 2))
+    accuracy = np.zeros(shape=(repeats, 10))
 
     for i in xrange(repeats):
         #scores[i], accuracy[i] = get_data_points(clf, data, labels, i)
-        scores[i], accuracy[i] = uncertainty_sampling(clf, data, labels, i)
+        #scores[i], accuracy[i] = uncertainty_sampling(clf, data, labels, i)
+        scores[i], accuracy[i] = random_sampling(clf, data, labels, i)
 
     # now need to average it out somehow
     av_scores = scores.mean(axis=0)
@@ -90,6 +92,84 @@ def build_pipeline():
     return clf
 
 
+def random_sampling(clf, data, labels, j):
+    """
+    Get set of data points for one curve
+    Want to add to the training data incrementally to mirror real life situtation
+    Folds are picked randomly
+    """
+    # set up array to hold scores
+    scores = np.zeros(shape=(10, 3, 2))
+    accuracy = np.zeros(shape=10)
+
+    # first take off 10% for testing
+    remaining_data, test_data, remaining_labels, test_labels = train_test_split(data, labels, train_size=0.9,
+                                                                                random_state=3*j)
+
+    # now take first split for training
+    train_data, remaining_data, train_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
+                                                                                  train_size=0.1,
+                                                                                  random_state=3*j)
+    no_samples = len(train_data) - 1
+    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    # now loop to create remaining training sets
+    for i in xrange(1, 10):
+        more_data, remaining_data, more_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
+                                                                                    train_size=no_samples,
+                                                                                    random_state=None)
+        # add the new training data to existing
+        train_data = np.append(train_data, more_data, axis=0)
+        train_labels = np.append(train_labels, more_labels)
+        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    return scores, accuracy
+
+
+def uncertainty_sampling(clf, data, labels, j):
+    """
+    Get set of data points for one curve
+    Want to add to the training data incrementally to mirror real life situtation
+    Samples the classifier is least confident about predicting are selected first
+    """
+    # set up array to hold scores
+    scores = np.zeros(shape=(10, 3, 2))
+    accuracy = np.zeros(shape=10)
+
+    # first take off 10% for testing
+    remaining_data, test_data, remaining_labels, test_labels = train_test_split(data, labels, train_size=0.9,
+                                                                                random_state=3*j)
+
+    # now take first split for training
+    train_data, remaining_data, train_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
+                                                                                  train_size=0.1,
+                                                                                  random_state=3*j)
+    no_samples = len(train_data) - 1
+    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    # now loop to create remaining training sets
+    for i in xrange(1, 10):
+        # calculate uncertainty of classifier on remaining data
+        # absolute value so both classes are considered
+        confidence = [abs(x) for x in clf.decision_function(remaining_data)]
+
+        # zip it all together and order by confidence
+        remaining = sorted(zip(confidence, remaining_data, remaining_labels), key=operator.itemgetter(0))
+        #print 'remaining', len(remaining)
+        confidence, remaining_data, remaining_labels = zip(*remaining)
+
+        # add the new training data to existing
+        train_data = np.append(train_data, remaining_data[:no_samples], axis=0)
+        train_labels = np.append(train_labels, remaining_labels[:no_samples])
+
+        remaining_data = np.array(remaining_data[no_samples:])
+        remaining_labels = np.array(remaining_labels[no_samples:])
+
+        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    return scores, accuracy
+
+
 def get_data_points(clf, data, labels, j):
     """
     Get set of data points for one curve
@@ -116,49 +196,6 @@ def get_data_points(clf, data, labels, j):
         # add the new training data to existing
         train_data = np.append(train_data, more_data, axis=0)
         train_labels = np.append(train_labels, more_labels)
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    return scores, accuracy
-
-
-def uncertainty_sampling(clf, data, labels, j):
-    """
-    Get set of data points for one curve
-    Want to add to the training data incrementally to mirror real life situtation
-    Samples the classifier is least confident about predicting are selected first
-    """
-    # set up array to hold scores
-    scores = np.zeros(shape=(9, 3, 2))
-    accuracy = np.zeros(shape=9)
-
-    # first take random split at 10%
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1,
-                                                                                         random_state=j)
-                                                                                         #random_state=None)
-    no_samples = len(train_data)
-    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    # now loop to create remaining training sets
-    for i in xrange(1, 9):
-        # calculate uncertainty of classifier on remaining data
-        # absolute value so both classes are considered
-        confidence = [abs(u) for u in clf.decision_function(test_data)]
-
-        # zip it all together and order by confidence
-        remaining = sorted(zip(confidence, test_data, test_labels), key=operator.itemgetter(0))
-        print 'remaining', len(remaining)
-        confidence, remaining_data, remaining_labels = zip(*remaining)
-
-        # add the new training data to existing
-        train_data = np.append(train_data, remaining_data[:no_samples], axis=0)
-        train_labels = np.append(train_labels, remaining_labels[:no_samples])
-        #print 'true training', np.sum(train_labels)
-
-        # what's left of remaining is then used for testing
-        test_data = np.array(remaining_data[no_samples:])
-        test_labels = np.array(remaining_labels[no_samples:])
-        #print 'true test', np.sum(test_labels)
-
         scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     return scores, accuracy
@@ -230,12 +267,19 @@ def draw_plots(scores, av_accuracy, samples_per_split):
     true_f = [s[2][1] for s in scores]
 
     # create ticks for x axis
-    ticks = np.linspace(samples_per_split, 9*samples_per_split, 9)
+    ticks = np.linspace(samples_per_split, 10*samples_per_split, 10)
 
-    plot(ticks, true_p, false_p, 'Precision', 'plots/' + time_stamped('balanced_precision.png'))
-    plot(ticks, true_r, false_r, 'Recall', 'plots/' + time_stamped('balanced_recall.png'))
-    plot(ticks, true_f, false_f, 'F-score', 'plots/' + time_stamped('balanced_fscore.png'))
-    plot(ticks, av_accuracy, None, 'Accuracy', 'plots/' + time_stamped('balanced_accuracy.png'))
+    '''
+    plot(ticks, true_p, false_p, 'Precision', 'plots/' + time_stamped('precision_2j_random.png'))
+    plot(ticks, true_r, false_r, 'Recall', 'plots/' + time_stamped('recall_2j_random.png'))
+    plot(ticks, true_f, false_f, 'F-score', 'plots/' + time_stamped('fscore_2j_random.png'))
+    plot(ticks, av_accuracy, None, 'Accuracy', 'plots/' + time_stamped('accuracy_2j_random.png'))
+    '''
+
+    plot(ticks, true_p, false_p, 'Precision', 'plots/uncertainty_comparison/precision_3j_random.png')
+    plot(ticks, true_r, false_r, 'Recall', 'plots/uncertainty_comparison/recall_3j_random.png')
+    plot(ticks, true_f, false_f, 'F-score', 'plots/uncertainty_comparison/fscore_3j_random.png')
+    plot(ticks, av_accuracy, None, 'Accuracy', 'plots/uncertainty_comparison/accuracy_3j_random.png')
 
 
 def plot(ticks, true, false, scoring, filepath):
@@ -276,4 +320,4 @@ def plot(ticks, true, false, scoring, filepath):
     plt.clf()
 
 if __name__ == '__main__':
-    learning_curves(repeats=1)
+    learning_curves(repeats=20)
