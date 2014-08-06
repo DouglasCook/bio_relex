@@ -32,15 +32,21 @@ def create_results():
         csv_writer.writerow(['features', 'accuracy', 'auroc', 'true_P', 'true_R', 'true_F',
                              'false_P', 'false_R', 'false_F', 'average_P', 'average_R', 'average_F'])
 
-        # first with all features
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, word_features=True, phrase_count=True)
+        '''
+        # first using all words
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=-1)
+        write_scores(csv_writer, clf, extractor, 'all')
+        '''
+
+        # only 5 most common words in each part of sentence
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
         write_scores(csv_writer, clf, extractor, 'all')
 
-        # first with all features
+        # no word features
         extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'no word specific')
-
         '''
+
         # no word counting
         extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=True)
         write_scores(csv_writer, clf, extractor, 'no word count')

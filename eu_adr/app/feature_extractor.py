@@ -12,7 +12,7 @@ class FeatureExtractor():
     # stopwords for use in cleaning up sentences
     stopwords = nltk.corpus.stopwords.words('english')
 
-    def __init__(self, word_features=False, word_gap=True, count_dict=True, phrase_count=True):
+    def __init__(self, word_features=0, word_gap=True, count_dict=True, phrase_count=True):
         """
         Store variables for which features to use
         """
@@ -37,7 +37,7 @@ class FeatureExtractor():
 
         # create dictionaries if word features are going to be used
         if self.word_features:
-            self.create_dictionaries(records)
+            self.create_dictionaries(records, self.word_features)
 
         for row in records:
             # store class label
@@ -131,16 +131,21 @@ class FeatureExtractor():
 
         return f_dict
 
-    def create_dictionaries(self, records):
+    def create_dictionaries(self, records, how_many):
         """
-        Create dictionaries for all verbs and nouns occurring in each part of the sentence
-        Words are stemmed before being written to database
+        Create dictionaries for most common verbs and nouns occurring in each part of the sentence
+        how_many is the number of words to use unless = -1 in which case use all words
         """
         # TODO make this function less massive!
         bef_verbs, bef_nouns, bet_verbs, bet_nouns, aft_verbs, aft_nouns = [], [], [], [], [], []
 
+        # if all words are to be used
+        if how_many == -1:
+            how_many = None
+
         # first create dictionaries of all terms
         # this makes counting terms much faster since don't need to check if key exists
+        # words are stemmed before being written to database so no need to stem here
         for row in records:
             # only consider between words for now
             before = [t for t in eval(row['before_tags']) if t[0] not in self.stopwords]
@@ -190,18 +195,18 @@ class FeatureExtractor():
         # now order by occurrence descending and store
         bef_verb_dict = sorted(bef_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
         bef_noun_dict = sorted(bef_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
-        self.bef_verb_dict = [x[0] for x in bef_verb_dict[:5]]
-        self.bef_noun_dict = [x[0] for x in bef_noun_dict[:5]]
+        self.bef_verb_dict = [x[0] for x in bef_verb_dict[:how_many]]
+        self.bef_noun_dict = [x[0] for x in bef_noun_dict[:how_many]]
 
         bet_verb_dict = sorted(bet_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
         bet_noun_dict = sorted(bet_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
-        self.bet_verb_dict = [x[0] for x in bet_verb_dict[:5]]
-        self.bet_noun_dict = [x[0] for x in bet_noun_dict[:5]]
+        self.bet_verb_dict = [x[0] for x in bet_verb_dict[:how_many]]
+        self.bet_noun_dict = [x[0] for x in bet_noun_dict[:how_many]]
 
         aft_verb_dict = sorted(aft_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
         aft_noun_dict = sorted(aft_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
-        self.aft_verb_dict = [x[0] for x in aft_verb_dict[:5]]
-        self.aft_noun_dict = [x[0] for x in aft_noun_dict[:5]]
+        self.aft_verb_dict = [x[0] for x in aft_verb_dict[:how_many]]
+        self.aft_noun_dict = [x[0] for x in aft_noun_dict[:how_many]]
 
     def word_check(self, verbs, nouns, which_set):
         """

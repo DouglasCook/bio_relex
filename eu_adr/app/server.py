@@ -100,6 +100,7 @@ def select_relations(user_id):
         # create list of relations to classify to iterate through
         rels = [c[0] for c in cursor]
         # TODO shuffling is one possible strategy, in order is another, distance from support vectors is another
+        # DO NOT shuffle when using active learning!
         random.shuffle(rels)
         session['rels_to_classify'] = rels
         session['number_rels'] = len(rels)
@@ -124,9 +125,11 @@ def remaining_to_do(user_id):
         print 'to do', to_do
 
         # now count all classifications done since last retraining
+        # do not include those unsure or bad NER since they tell the classifier nothing
         cursor.execute('''SELECT count(rel_id)
                           FROM decisions
                           WHERE user_id = ? AND
+                                decision < 2 AND
                                 rel_id NOT IN (SELECT rel_id
                                                FROM relations
                                                WHERE true_rel IS NOT NULL)''', [user_id])
@@ -204,14 +207,17 @@ def record_decision():
     Save annotators decision and redirect to next relation to be classified
     """
     # write decision to the database
-    store_decision(request.form['class'], request.form['reason'])
+    decision = int(request.form['class'])
+    store_decision(decision, request.form['reason'])
 
     # redirect to finished page if there are no remaining relations
     if session['next_index'] == session['number_rels'] - 1:
         return render_template('finished.html')
 
-    session['still_to_do'] -= 1
-    print 'still to do', session['still_to_do']
+    # only decrement counter if classification is true or false (not unsure or bad NER)
+    if decision < 2:
+        session['still_to_do'] -= 1
+        print 'still to do', session['still_to_do']
 
     # if it's time to retrain
     if session['still_to_do'] == 0:

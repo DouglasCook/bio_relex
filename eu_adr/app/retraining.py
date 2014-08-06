@@ -21,17 +21,17 @@ def update_correct_classifications():
         cursor = db.cursor()
 
         # updated all unclassified relations based on annotators decisions
-        # this query is horrific but don't think sqlite offers a nicer way to do it
-
+        # this query is horrific but don't think sqlite offers nicer way with joins in update query
+        # decision < 2 so only true or false classifications are considered
         cursor.execute('''UPDATE relations
                           SET true_rel = (SELECT decisions.decision
                                           FROM decisions NATURAL JOIN users
-                                          WHERE decision != 2 AND
+                                          WHERE decision < 2 AND
                                                 users.type != 'classifier' AND
                                                 decisions.rel_id = relations.rel_id)
                           WHERE relations.rel_id IN (SELECT decisions.rel_id
                                                      FROM decisions NATURAL JOIN users
-                                                     WHERE decisions.decision != 2 AND
+                                                     WHERE decisions.decision < 2 AND
                                                            users.type != 'classifier');''')
 
 
