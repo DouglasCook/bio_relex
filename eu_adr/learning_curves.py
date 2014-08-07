@@ -37,8 +37,8 @@ def learning_curves(splits, repeats):
         #scores[i], accuracy[i] = random_sampling(clf, data, labels, splits, i)
 
     # now need to average it out somehow
-    av_scores = scores.mean(axis=0)
-    av_accuracy = accuracy.mean(axis=0)
+    av_scores = scores.mean(axis=0, dtype=np.float64)
+    av_accuracy = accuracy.mean(axis=0, dtype=np.float64)
     draw_true_false_plots(av_scores, av_accuracy, samples_per_split)
 
     #pickle.dump(scores, open('scores.p', 'wb'))
@@ -190,6 +190,7 @@ def density_sampling(clf, data, labels, sim, splits, j):
     train_data, rest_data, train_labels, rest_labels, _, rest_sim = train_test_split(rest_data, rest_labels, rest_sim,
                                                                                      train_size=1.0/splits,
                                                                                      random_state=2*j)
+    # TODO fix this
     #no_samples = len(train_data) - 1
     no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
@@ -326,7 +327,6 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     # evaluate accuracy of output compared to correct classification
     scores = precision_recall_fscore_support(test_labels, predicted)
 
-    # return precision, recall and f1
     return np.array([scores[0], scores[1], scores[2]]), accuracy
 
 
@@ -335,6 +335,7 @@ def draw_true_false_plots(scores, av_accuracy, samples_per_split):
     Create plots for precision, recall and f-score
     """
     #scores = pickle.load(open('av_scores.p', 'rb'))
+    # TODO change this to use numpy slices eg [:, 0]
     false_p = [s[0][0] for s in scores]
     true_p = [s[0][1] for s in scores]
     false_r = [s[1][0] for s in scores]
@@ -396,7 +397,7 @@ def plot(ticks, true, false, scoring, filepath):
     plt.clf()
 
 
-def learning_method_comparison(splits, repeats):
+def learning_method_comparison(splits, repeats, scoring):
     """
     Plot learning curves to compare accuracy of different learning methods
     """
@@ -421,14 +422,36 @@ def learning_method_comparison(splits, repeats):
         u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, data, labels, splits, i)
         d_scores[i], d_accuracy[i] = density_sampling(clf, data, labels, sim, splits, i)
 
-    r_av_accuracy = r_accuracy.mean(axis=0)
-    u_av_accuracy = u_accuracy.mean(axis=0)
-    d_av_accuracy = d_accuracy.mean(axis=0)
+    # now take averages of scores
+    if scoring == 'Accuracy':
+        r_scores = r_accuracy.mean(axis=0, dtype=np.float64)
+        u_scores = u_accuracy.mean(axis=0, dtype=np.float64)
+        d_scores = d_accuracy.mean(axis=0, dtype=np.float64)
+    else:
+        # average over the repeats
+        r_scores = r_scores.mean(axis=0, dtype=np.float64)
+        u_scores = u_scores.mean(axis=0, dtype=np.float64)
+        d_scores = d_scores.mean(axis=0, dtype=np.float64)
+        # then true and false
+        r_scores = r_scores.mean(axis=2, dtype=np.float64)
+        u_scores = u_scores.mean(axis=2, dtype=np.float64)
+        d_scores = d_scores.mean(axis=2, dtype=np.float64)
 
-    draw_learning_comparison(splits, r_av_accuracy, u_av_accuracy, d_av_accuracy, samples_per_split, repeats)
+        # then pick desired set of scores
+        if scoring == 'Precision':
+            score_index = 0
+        elif scoring == 'Recall':
+            score_index = 1
+        else:
+            score_index = 2
+        r_scores = r_scores[:, score_index]
+        u_scores = u_scores[:, score_index]
+        d_scores = d_scores[:, score_index]
+
+    draw_learning_comparison(splits, r_scores, u_scores, d_scores, samples_per_split, repeats, scoring)
 
 
-def draw_learning_comparison(splits, r_accuracy, u_accuracy, d_accuracy, samples_per_split, repeats):
+def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_split, repeats, scoring):
     """
     Plot the different learning methods on same graph
     """
@@ -439,12 +462,12 @@ def draw_learning_comparison(splits, r_accuracy, u_accuracy, d_accuracy, samples
     plt.figure()
     plt.grid()
     plt.xlabel('Training Instances')
-    plt.ylabel('Accuracy')
-    plt.title('Learning Comparison using %s splits and %s repeats' % (splits, repeats))
+    plt.ylabel(scoring)
+    plt.title('%s Learning Comparison using %s splits and %s repeats' % (scoring, splits, repeats))
 
-    plt.plot(ticks, r_accuracy, label='Random Sampling')
-    plt.plot(ticks, u_accuracy, label='Uncertainty Sampling')
-    plt.plot(ticks, d_accuracy, label='Density Sampling')
+    plt.plot(ticks, r_score, label='Random Sampling')
+    plt.plot(ticks, u_score, label='Uncertainty Sampling')
+    plt.plot(ticks, d_score, label='Density Sampling')
 
     plt.legend(loc='best')
 
@@ -454,4 +477,4 @@ def draw_learning_comparison(splits, r_accuracy, u_accuracy, d_accuracy, samples
 
 if __name__ == '__main__':
     #learning_curves(repeats=20)
-    learning_method_comparison(splits=50, repeats=20)
+    learning_method_comparison(repeats=20, splits=50, scoring='F-Score')
