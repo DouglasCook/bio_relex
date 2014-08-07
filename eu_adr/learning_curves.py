@@ -2,9 +2,12 @@ import sqlite3
 import operator
 import random
 import datetime
+import pickle
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial import distance
+
 from sklearn import preprocessing
 from sklearn import cross_validation
 from sklearn.cross_validation import train_test_split
@@ -17,30 +20,26 @@ from app.feature_extractor import FeatureExtractor
 from app.utility import time_stamped
 
 
-def learning_curves(repeats):
+def learning_curves(splits, repeats):
     """
     Plot learning curve thingies
     """
     clf = build_pipeline()
-
     data, labels = load_features_data(eu_adr_only=False)
-    # convert from dict into np array
-    vec = DictVectorizer()
-    data = vec.fit_transform(data).toarray()
 
     samples_per_split = 0.09*len(data)
     scores = np.zeros(shape=(repeats, 10, 3, 2))
     accuracy = np.zeros(shape=(repeats, 10))
 
     for i in xrange(repeats):
-        #scores[i], accuracy[i] = get_data_points(clf, data, labels, i)
-        #scores[i], accuracy[i] = uncertainty_sampling(clf, data, labels, i)
-        scores[i], accuracy[i] = random_sampling(clf, data, labels, i)
+        #scores[i], accuracy[i] = get_data_points(clf, data, labels, splits, i)
+        scores[i], accuracy[i] = uncertainty_sampling(clf, data, labels, splits, i)
+        #scores[i], accuracy[i] = random_sampling(clf, data, labels, splits, i)
 
     # now need to average it out somehow
     av_scores = scores.mean(axis=0)
     av_accuracy = accuracy.mean(axis=0)
-    draw_plots(av_scores, av_accuracy, samples_per_split)
+    draw_true_false_plots(av_scores, av_accuracy, samples_per_split)
 
     #pickle.dump(scores, open('scores.p', 'wb'))
     #pickle.dump(av_scores, open('av_scores.p', 'wb'))
@@ -71,6 +70,10 @@ def load_features_data(eu_adr_only=False):
     records = cursor.fetchall()
     feature_vectors, class_vector = extractor.generate_features(records, balance_classes=False)
 
+    # convert from dict into np array
+    vec = DictVectorizer()
+    feature_vectors = vec.fit_transform(feature_vectors).toarray()
+
     return feature_vectors, class_vector
 
 
@@ -92,32 +95,32 @@ def build_pipeline():
     return clf
 
 
-def random_sampling(clf, data, labels, j):
+def random_sampling(clf, data, labels, splits, j):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
     Folds are picked randomly
     """
     # set up array to hold scores
-    scores = np.zeros(shape=(10, 3, 2))
-    accuracy = np.zeros(shape=10)
+    scores = np.zeros(shape=(splits, 3, 2))
+    accuracy = np.zeros(shape=splits)
 
     # first take off 10% for testing
-    remaining_data, test_data, remaining_labels, test_labels = train_test_split(data, labels, train_size=0.9,
-                                                                                random_state=3*j)
-
+    rest_data, test_data, rest_labels, test_labels = train_test_split(data, labels, train_size=0.8,
+                                                                      random_state=j)
     # now take first split for training
-    train_data, remaining_data, train_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
-                                                                                  train_size=0.1,
-                                                                                  random_state=3*j)
-    no_samples = len(train_data) - 1
+    train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
+                                                                        train_size=1.0/splits,
+                                                                        random_state=2*j)
+    #no_samples = len(train_data) - 1
+    no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     # now loop to create remaining training sets
-    for i in xrange(1, 10):
-        more_data, remaining_data, more_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
-                                                                                    train_size=no_samples,
-                                                                                    random_state=None)
+    for i in xrange(1, splits):
+        more_data, rest_data, more_labels, rest_labels = train_test_split(rest_data, rest_labels,
+                                                                          train_size=no_samples,
+                                                                          random_state=None)
         # add the new training data to existing
         train_data = np.append(train_data, more_data, axis=0)
         train_labels = np.append(train_labels, more_labels)
@@ -126,48 +129,121 @@ def random_sampling(clf, data, labels, j):
     return scores, accuracy
 
 
-def uncertainty_sampling(clf, data, labels, j):
+def uncertainty_sampling(clf, data, labels, splits, j):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
     Samples the classifier is least confident about predicting are selected first
     """
     # set up array to hold scores
-    scores = np.zeros(shape=(10, 3, 2))
-    accuracy = np.zeros(shape=10)
+    scores = np.zeros(shape=(splits, 3, 2))
+    accuracy = np.zeros(shape=splits)
 
     # first take off 10% for testing
-    remaining_data, test_data, remaining_labels, test_labels = train_test_split(data, labels, train_size=0.9,
-                                                                                random_state=3*j)
-
+    rest_data, test_data, rest_labels, test_labels = train_test_split(data, labels, train_size=0.8,
+                                                                      random_state=j)
     # now take first split for training
-    train_data, remaining_data, train_labels, remaining_labels = train_test_split(remaining_data, remaining_labels,
-                                                                                  train_size=0.1,
-                                                                                  random_state=3*j)
-    no_samples = len(train_data) - 1
+    train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
+                                                                        train_size=1.0/splits,
+                                                                        random_state=2*j)
+    #no_samples = len(train_data) - 1
+    no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     # now loop to create remaining training sets
-    for i in xrange(1, 10):
+    for i in xrange(1, splits):
         # calculate uncertainty of classifier on remaining data
         # absolute value so both classes are considered
-        confidence = [abs(x) for x in clf.decision_function(remaining_data)]
+        confidence = [abs(x) for x in clf.decision_function(rest_data)]
 
         # zip it all together and order by confidence
-        remaining = sorted(zip(confidence, remaining_data, remaining_labels), key=operator.itemgetter(0))
+        remaining = sorted(zip(confidence, rest_data, rest_labels), key=operator.itemgetter(0))
         #print 'remaining', len(remaining)
-        confidence, remaining_data, remaining_labels = zip(*remaining)
+        confidence, rest_data, rest_labels = zip(*remaining)
 
         # add the new training data to existing
-        train_data = np.append(train_data, remaining_data[:no_samples], axis=0)
-        train_labels = np.append(train_labels, remaining_labels[:no_samples])
+        train_data = np.append(train_data, rest_data[:no_samples], axis=0)
+        train_labels = np.append(train_labels, rest_labels[:no_samples])
 
-        remaining_data = np.array(remaining_data[no_samples:])
-        remaining_labels = np.array(remaining_labels[no_samples:])
+        rest_data = np.array(rest_data[no_samples:])
+        rest_labels = np.array(rest_labels[no_samples:])
 
         scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     return scores, accuracy
+
+
+def density_sampling(clf, data, labels, sim, splits, j):
+    """
+    Get set of data points for one curve
+    Want to add to the training data incrementally to mirror real life situtation
+    Samples selected based on confidence measure weighted by similarity to other samples
+    """
+    # set up array to hold scores
+    scores = np.zeros(shape=(splits, 3, 2))
+    accuracy = np.zeros(shape=splits)
+
+    # first take off 10% for testing
+    rest_data, test_data, rest_labels, test_labels, rest_sim, _ = train_test_split(data, labels, sim, train_size=0.8,
+                                                                                   random_state=j)
+    # now take first split for training
+    train_data, rest_data, train_labels, rest_labels, _, rest_sim = train_test_split(rest_data, rest_labels, rest_sim,
+                                                                                     train_size=1.0/splits,
+                                                                                     random_state=2*j)
+    #no_samples = len(train_data) - 1
+    no_samples = len(train_data)
+    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    # now loop to create remaining training sets
+    for i in xrange(1, splits):
+        # calculate uncertainty of classifier on remaining data
+        confidence = clf.decision_function(rest_data).flatten()
+        # absolute value so both classes are considered
+        confidence = np.absolute(confidence)
+
+        # TODO may want to scale weighting between uncertainty and similarity score
+        #rest_sim **= 0.8
+
+        # weigh the confidence based on similarity measure
+        confidence = np.multiply(confidence, rest_sim)
+        # zip it all together and order by confidence
+        remaining = sorted(zip(confidence, rest_data, rest_labels, rest_sim), key=operator.itemgetter(0))
+        #print 'remaining', len(remaining)
+        confidence, rest_data, rest_labels, rest_sim = zip(*remaining)
+
+        # add the new training data to existing
+        train_data = np.append(train_data, rest_data[:no_samples], axis=0)
+        train_labels = np.append(train_labels, rest_labels[:no_samples])
+
+        rest_data = np.array(rest_data[no_samples:])
+        rest_labels = np.array(rest_labels[no_samples:])
+        rest_sim = np.array(rest_sim[no_samples:])
+
+        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    return scores, accuracy
+
+
+def get_similarities(vectors):
+    """
+    Calculate similarities of vectors ie one to all others
+    """
+    print 'calculating similarities'
+    similarities = np.zeros(len(vectors))
+    for i, v in enumerate(vectors):
+        print i
+        total = 0
+        others = np.delete(vectors, i, 0)
+
+        # loop through all other vectors and get total cosine distance
+        for x in others:
+            total += distance.cosine(v, x)
+
+        # cos_similarity = 1 - av_cos_dist
+        similarities[i] = 1 - total/len(others)
+    print 'finished calculating similarities'
+
+    return similarities
 
 
 def get_data_points(clf, data, labels, j):
@@ -254,7 +330,7 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     return np.array([scores[0], scores[1], scores[2]]), accuracy
 
 
-def draw_plots(scores, av_accuracy, samples_per_split):
+def draw_true_false_plots(scores, av_accuracy, samples_per_split):
     """
     Create plots for precision, recall and f-score
     """
@@ -319,5 +395,63 @@ def plot(ticks, true, false, scoring, filepath):
     plt.savefig(filepath, format='png')
     plt.clf()
 
+
+def learning_method_comparison(splits, repeats):
+    """
+    Plot learning curves to compare accuracy of different learning methods
+    """
+    clf = build_pipeline()
+    data, labels = load_features_data(eu_adr_only=False)
+
+    samples_per_split = (0.9/splits) * len(data)
+    r_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    u_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    d_scores = np.zeros(shape=(repeats, splits, 3, 2))
+
+    r_accuracy = np.zeros(shape=(repeats, splits))
+    u_accuracy = np.zeros(shape=(repeats, splits))
+    d_accuracy = np.zeros(shape=(repeats, splits))
+
+    # run test with same starting conditions
+    for i in xrange(repeats):
+        print i
+        # if using density sampling only want to calculate similarities once
+        sim = pickle.load(open('pickles/similarities.p', 'rb'))
+        r_scores[i], r_accuracy[i] = random_sampling(clf, data, labels, splits, i)
+        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, data, labels, splits, i)
+        d_scores[i], d_accuracy[i] = density_sampling(clf, data, labels, sim, splits, i)
+
+    r_av_accuracy = r_accuracy.mean(axis=0)
+    u_av_accuracy = u_accuracy.mean(axis=0)
+    d_av_accuracy = d_accuracy.mean(axis=0)
+
+    draw_learning_comparison(splits, r_av_accuracy, u_av_accuracy, d_av_accuracy, samples_per_split, repeats)
+
+
+def draw_learning_comparison(splits, r_accuracy, u_accuracy, d_accuracy, samples_per_split, repeats):
+    """
+    Plot the different learning methods on same graph
+    """
+    # create ticks for x axis
+    ticks = np.linspace(samples_per_split, splits*samples_per_split, splits)
+
+    # set up the figure
+    plt.figure()
+    plt.grid()
+    plt.xlabel('Training Instances')
+    plt.ylabel('Accuracy')
+    plt.title('Learning Comparison using %s splits and %s repeats' % (splits, repeats))
+
+    plt.plot(ticks, r_accuracy, label='Random Sampling')
+    plt.plot(ticks, u_accuracy, label='Uncertainty Sampling')
+    plt.plot(ticks, d_accuracy, label='Density Sampling')
+
+    plt.legend(loc='best')
+
+    plt.savefig('plots/learning_comparison_' + time_stamped('.png'), format='png')
+    plt.clf()
+
+
 if __name__ == '__main__':
-    learning_curves(repeats=20)
+    #learning_curves(repeats=20)
+    learning_method_comparison(splits=50, repeats=20)

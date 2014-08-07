@@ -207,6 +207,7 @@ def record_decision():
     Save annotators decision and redirect to next relation to be classified
     """
     # write decision to the database
+    # remember to cast as int since sqlite doesn't enforce types
     decision = int(request.form['class'])
     store_decision(decision, request.form['reason'])
 
