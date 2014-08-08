@@ -111,13 +111,12 @@ def random_sampling(clf, data, labels, splits, j):
     # now take first split for training
     train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
                                                                         train_size=1.0/splits,
-                                                                        random_state=2*j)
-    #no_samples = len(train_data) - 1
+                                                                        random_state=j)
     no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     # now loop to create remaining training sets
-    for i in xrange(1, splits):
+    for i in xrange(1, splits - 1):
         more_data, rest_data, more_labels, rest_labels = train_test_split(rest_data, rest_labels,
                                                                           train_size=no_samples,
                                                                           random_state=None)
@@ -125,6 +124,11 @@ def random_sampling(clf, data, labels, splits, j):
         train_data = np.append(train_data, more_data, axis=0)
         train_labels = np.append(train_labels, more_labels)
         scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+
+    # trying to split again will throw error so add final set separately
+    train_data = np.append(train_data, rest_data, axis=0)
+    train_labels = np.append(train_labels, rest_labels)
+    scores[splits - 1], accuracy[splits - 1] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
     return scores, accuracy
 
@@ -145,8 +149,7 @@ def uncertainty_sampling(clf, data, labels, splits, j):
     # now take first split for training
     train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
                                                                         train_size=1.0/splits,
-                                                                        random_state=2*j)
-    #no_samples = len(train_data) - 1
+                                                                        random_state=j)
     no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
@@ -189,9 +192,7 @@ def density_sampling(clf, data, labels, sim, splits, j):
     # now take first split for training
     train_data, rest_data, train_labels, rest_labels, _, rest_sim = train_test_split(rest_data, rest_labels, rest_sim,
                                                                                      train_size=1.0/splits,
-                                                                                     random_state=2*j)
-    # TODO fix this
-    #no_samples = len(train_data) - 1
+                                                                                     random_state=j)
     no_samples = len(train_data)
     scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
 
@@ -397,10 +398,11 @@ def plot(ticks, true, false, scoring, filepath):
     plt.clf()
 
 
-def learning_method_comparison(splits, repeats, scoring):
+def learning_method_comparison(splits, repeats):
     """
     Plot learning curves to compare accuracy of different learning methods
     """
+    # TODO want to draw graphs for all scoring methods in one go, no point in repeating it all
     clf = build_pipeline()
     data, labels = load_features_data(eu_adr_only=False)
 
@@ -416,39 +418,38 @@ def learning_method_comparison(splits, repeats, scoring):
     # run test with same starting conditions
     for i in xrange(repeats):
         print i
+        r_scores[i], r_accuracy[i] = random_sampling(clf, data, labels, splits, 3*i)
+        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, data, labels, splits, 3*i)
         # if using density sampling only want to calculate similarities once
         sim = pickle.load(open('pickles/similarities.p', 'rb'))
-        r_scores[i], r_accuracy[i] = random_sampling(clf, data, labels, splits, i)
-        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, data, labels, splits, i)
-        d_scores[i], d_accuracy[i] = density_sampling(clf, data, labels, sim, splits, i)
+        d_scores[i], d_accuracy[i] = density_sampling(clf, data, labels, sim, splits, 3*i)
 
-    # now take averages of scores
-    if scoring == 'Accuracy':
-        r_scores = r_accuracy.mean(axis=0, dtype=np.float64)
-        u_scores = u_accuracy.mean(axis=0, dtype=np.float64)
-        d_scores = d_accuracy.mean(axis=0, dtype=np.float64)
-    else:
-        # average over the repeats
-        r_scores = r_scores.mean(axis=0, dtype=np.float64)
-        u_scores = u_scores.mean(axis=0, dtype=np.float64)
-        d_scores = d_scores.mean(axis=0, dtype=np.float64)
-        # then true and false
-        r_scores = r_scores.mean(axis=2, dtype=np.float64)
-        u_scores = u_scores.mean(axis=2, dtype=np.float64)
-        d_scores = d_scores.mean(axis=2, dtype=np.float64)
+    # create array of scores to pass to plotter
+    scores = [['Accuracy'], ['Precision'], ['Recall'], ['F-Score']]
+    # accuracy scores
+    scores[0].append(r_accuracy.mean(axis=0, dtype=np.float64))
+    scores[0].append(u_accuracy.mean(axis=0, dtype=np.float64))
+    scores[0].append(d_accuracy.mean(axis=0, dtype=np.float64))
 
-        # then pick desired set of scores
-        if scoring == 'Precision':
-            score_index = 0
-        elif scoring == 'Recall':
-            score_index = 1
-        else:
-            score_index = 2
-        r_scores = r_scores[:, score_index]
-        u_scores = u_scores[:, score_index]
-        d_scores = d_scores[:, score_index]
+    # average over the repeats
+    r_scores = r_scores.mean(axis=0, dtype=np.float64)
+    u_scores = u_scores.mean(axis=0, dtype=np.float64)
+    d_scores = d_scores.mean(axis=0, dtype=np.float64)
+    # then true and false
+    r_scores = r_scores.mean(axis=2, dtype=np.float64)
+    u_scores = u_scores.mean(axis=2, dtype=np.float64)
+    d_scores = d_scores.mean(axis=2, dtype=np.float64)
 
-    draw_learning_comparison(splits, r_scores, u_scores, d_scores, samples_per_split, repeats, scoring)
+    # using numpy slicing to select correct scores
+    for i in xrange(3):
+        scores[i+1].append(r_scores[:, i])
+        scores[i+1].append(u_scores[:, i])
+        scores[i+1].append(d_scores[:, i])
+
+    for i in xrange(4):
+        draw_learning_comparison(splits, scores[i][1], scores[i][2], scores[i][3], samples_per_split, repeats,
+                                 scores[i][0])
+        #draw_learning_comparison(splits, r_scores, u_scores, d_scores, samples_per_split, repeats, scoring)
 
 
 def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_split, repeats, scoring):
@@ -471,10 +472,10 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
     plt.legend(loc='best')
 
-    plt.savefig('plots/learning_comparison_' + time_stamped('.png'), format='png')
+    plt.savefig('plots/learning_comparison_' + scoring + '_' + time_stamped('.png'), format='png')
     plt.clf()
 
 
 if __name__ == '__main__':
     #learning_curves(repeats=20)
-    learning_method_comparison(repeats=20, splits=50, scoring='F-Score')
+    learning_method_comparison(repeats=20, splits=30)

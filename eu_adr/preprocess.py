@@ -212,7 +212,7 @@ def tagging(filename, new_file=False):
     """
     # set filepath to input
     file_in = 'csv/' + filename
-    file_out = 'csv/tagged_sentences_NEW_CHUNKS.csv'
+    file_out = 'csv/tagged_sentences_TREEBANK_CHUNKS.csv'
 
     chunker = TaggerChunker()
 
@@ -253,8 +253,8 @@ def tagging(filename, new_file=False):
                 sys.stdout.flush()
 
                 # tag and chunk the parts of sentence
-                bef, bet, aft = chunker.proper_pos_and_chunk_tags(row['sentence'], row['before'], row['between'],
-                                                                  row['e1'], row['e2'])
+                bef, bet, aft = chunker.pos_and_chunk_tags(row['sentence'], row['before'], row['between'],
+                                                               row['e1'], row['e2'])
                 row.update({'before_tags': bef})
                 row.update({'between_tags': bet})
                 row.update({'after_tags': aft})

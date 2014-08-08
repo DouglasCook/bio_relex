@@ -18,7 +18,7 @@ def split_sentence(sent, start1, end1, start2, end2):
     return sent[:start1], sent[end1 + 1:start2], sent[end2 + 1:]
 
 
-def time_stamped(fname, fmt='%Y-%m-%d-%H-%M-%S_{fname}'):
+def time_stamped(fname, fmt='%Y-%m-%d-%H-%M-%S{fname}'):
     """
     Add a timestamp to start of filename
     """
