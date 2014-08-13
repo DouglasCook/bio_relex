@@ -1,7 +1,5 @@
 import sqlite3
 import operator
-import random
-import datetime
 import pickle
 
 import numpy as np
@@ -18,6 +16,9 @@ from sklearn.svm import SVC
 
 from app.feature_extractor import FeatureExtractor
 from app.utility import time_stamped
+
+# TODO does this make sense? global thing here?
+vec = DictVectorizer()
 
 
 def learning_curves(splits, repeats):
@@ -45,13 +46,10 @@ def learning_curves(splits, repeats):
     #pickle.dump(av_scores, open('av_scores.p', 'wb'))
 
 
-def load_features_data(eu_adr_only=False):
+def load_records(eu_adr_only=False):
     """
     Load some part of data
     """
-    # TODO need to learn word features for each training set - otherwise cheating by using test data in training
-    # set up feature extractor with desired features
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=0)
     with sqlite3.connect('database/euadr_biotext.db') as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
@@ -69,13 +67,8 @@ def load_features_data(eu_adr_only=False):
                           WHERE sentences.source != 'pubmed';''')
 
     records = cursor.fetchall()
-    feature_vectors, class_vector = extractor.generate_features(records, balance_classes=False)
 
-    # convert from dict into np array
-    vec = DictVectorizer()
-    feature_vectors = vec.fit_transform(feature_vectors).toarray()
-
-    return feature_vectors, class_vector
+    return records
 
 
 def build_pipeline():
@@ -87,13 +80,13 @@ def build_pipeline():
                     #('svm', SVC(kernel='sigmoid'))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
                     ('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
-                    #('svm', SVC(kernel='linear'))])
-                    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
-                                                             #n_jobs=-1))])
+    #('svm', SVC(kernel='linear'))])
+    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
+    #n_jobs=-1))])
     return clf
 
 
-def random_sampling(clf, data, labels, splits, j):
+def random_sampling(clf, extractor, records, train_indices, test_indices, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -102,36 +95,27 @@ def random_sampling(clf, data, labels, splits, j):
     # set up array to hold scores
     scores = np.zeros(shape=(splits, 3, 2))
     accuracy = np.zeros(shape=splits)
+    no_samples = len(train_indices)/splits
 
-    # first take off 10% for testing
-    rest_data, test_data, rest_labels, test_labels = train_test_split(data, labels, train_size=0.8,
-                                                                      random_state=j)
-    # now take first split for training
-    train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
-                                                                        train_size=1.0/splits,
-                                                                        random_state=j)
-    no_samples = len(train_data)
-    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+    # now take first split for training and leave remainder
+    # NEED TO TAKE REST FIRST SINCE TRAIN WILL CHANGE
+    rest_indices = train_indices[no_samples:]
+    train_indices = train_indices[:no_samples]
+
+    scores[0], accuracy[0] = get_scores(clf, extractor, records, train_indices, test_indices)
 
     # now loop to create remaining training sets
-    for i in xrange(1, splits - 1):
-        more_data, rest_data, more_labels, rest_labels = train_test_split(rest_data, rest_labels,
-                                                                          train_size=no_samples,
-                                                                          random_state=None)
+    for i in xrange(1, splits):
         # add the new training data to existing
-        train_data = np.append(train_data, more_data, axis=0)
-        train_labels = np.append(train_labels, more_labels)
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    # trying to split again will throw error so add final set separately
-    train_data = np.append(train_data, rest_data, axis=0)
-    train_labels = np.append(train_labels, rest_labels)
-    scores[splits - 1], accuracy[splits - 1] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+        # NOW NEED TO TAKE TRAIN FIRST SINCE REST WILL CHANGE
+        train_indices = np.append(train_indices, rest_indices[:no_samples])
+        rest_indices = rest_indices[no_samples:]
+        scores[i], accuracy[i] = get_scores(clf, extractor, records, train_indices, test_indices)
 
     return scores, accuracy
 
 
-def uncertainty_sampling(clf, data, labels, splits, j):
+def uncertainty_sampling(clf, extractor, records, train_indices, test_indices, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -140,41 +124,37 @@ def uncertainty_sampling(clf, data, labels, splits, j):
     # set up array to hold scores
     scores = np.zeros(shape=(splits, 3, 2))
     accuracy = np.zeros(shape=splits)
+    no_samples = len(train_indices)/splits
 
-    # first take off 10% for testing
-    rest_data, test_data, rest_labels, test_labels = train_test_split(data, labels, train_size=0.8,
-                                                                      random_state=j)
-    # now take first split for training
-    train_data, rest_data, train_labels, rest_labels = train_test_split(rest_data, rest_labels,
-                                                                        train_size=1.0/splits,
-                                                                        random_state=j)
-    no_samples = len(train_data)
-    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+    # now take first split for training and leave remainder
+    # NEED TO TAKE REST FIRST SINCE TRAIN WILL CHANGE
+    rest_indices = train_indices[no_samples:]
+    train_indices = train_indices[:no_samples]
+
+    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, train_indices, test_indices, rest_indices)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits):
         # calculate uncertainty of classifier on remaining data
+        confidence = clf.decision_function(rest_data).flatten()
         # absolute value so both classes are considered
-        confidence = [abs(x) for x in clf.decision_function(rest_data)]
+        confidence = np.absolute(confidence)
 
         # zip it all together and order by confidence
-        remaining = sorted(zip(confidence, rest_data, rest_labels), key=operator.itemgetter(0))
+        remaining = sorted(zip(confidence, rest_indices), key=operator.itemgetter(0))
         #print 'remaining', len(remaining)
-        confidence, rest_data, rest_labels = zip(*remaining)
+        confidence, rest_indices = zip(*remaining)
 
         # add the new training data to existing
-        train_data = np.append(train_data, rest_data[:no_samples], axis=0)
-        train_labels = np.append(train_labels, rest_labels[:no_samples])
-
-        rest_data = np.array(rest_data[no_samples:])
-        rest_labels = np.array(rest_labels[no_samples:])
-
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+        train_indices = np.append(train_indices, rest_indices[:no_samples])
+        rest_indices = rest_indices[no_samples:]
+        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+                                                       rest_indices)
 
     return scores, accuracy
 
 
-def density_sampling(clf, data, labels, sim, splits, j):
+def density_sampling(clf, extractor, records, train_indices, test_indices, sim, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -183,16 +163,14 @@ def density_sampling(clf, data, labels, sim, splits, j):
     # set up array to hold scores
     scores = np.zeros(shape=(splits, 3, 2))
     accuracy = np.zeros(shape=splits)
+    no_samples = len(train_indices)/splits
 
-    # first take off 10% for testing
-    rest_data, test_data, rest_labels, test_labels, rest_sim, _ = train_test_split(data, labels, sim, train_size=0.8,
-                                                                                   random_state=j)
-    # now take first split for training
-    train_data, rest_data, train_labels, rest_labels, _, rest_sim = train_test_split(rest_data, rest_labels, rest_sim,
-                                                                                     train_size=1.0/splits,
-                                                                                     random_state=j)
-    no_samples = len(train_data)
-    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+    # now take first split for training and leave remainder
+    # NEED TO TAKE REST FIRST SINCE TRAIN WILL CHANGE
+    rest_indices = train_indices[no_samples:]
+    train_indices = train_indices[:no_samples]
+
+    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, train_indices, test_indices, rest_indices)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits):
@@ -202,24 +180,21 @@ def density_sampling(clf, data, labels, sim, splits, j):
         confidence = np.absolute(confidence)
 
         # TODO may want to scale weighting between uncertainty and similarity score
+        rest_sim = sim[np.array(rest_indices)]
         #rest_sim **= 0.8
 
         # weigh the confidence based on similarity measure
         confidence = np.multiply(confidence, rest_sim)
         # zip it all together and order by confidence
-        remaining = sorted(zip(confidence, rest_data, rest_labels, rest_sim), key=operator.itemgetter(0))
+        remaining = sorted(zip(confidence, rest_indices), key=operator.itemgetter(0))
         #print 'remaining', len(remaining)
-        confidence, rest_data, rest_labels, rest_sim = zip(*remaining)
+        confidence, rest_indices = zip(*remaining)
 
         # add the new training data to existing
-        train_data = np.append(train_data, rest_data[:no_samples], axis=0)
-        train_labels = np.append(train_labels, rest_labels[:no_samples])
-
-        rest_data = np.array(rest_data[no_samples:])
-        rest_labels = np.array(rest_labels[no_samples:])
-        rest_sim = np.array(rest_sim[no_samples:])
-
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
+        train_indices = np.append(train_indices, rest_indices[:no_samples])
+        rest_indices = rest_indices[no_samples:]
+        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+                                                       rest_indices)
 
     return scores, accuracy
 
@@ -313,10 +288,31 @@ def nicer_get_data_points(clf, data, labels, j):
     return scores, accuracy
 
 
-def get_scores(clf, train_data, train_labels, test_data, test_labels):
+def get_scores(clf, extractor, records, train_indices, test_indices, rest_indices=None):
     """
     Return array of scores
     """
+    # need to use list comprehension since records is not nice numpy array
+    train_records = [records[i] for i in train_indices]
+
+    # word features must be selected based on training set only otherwise test data contaminates training set
+    extractor.create_dictionaries(train_records, how_many=5)
+
+    data, labels = extractor.generate_features(records)
+    # convert from dict to array
+    data = vec.fit_transform(data).toarray()
+
+    train_data = data[train_indices]
+    train_labels = labels[train_indices]
+    test_data = data[test_indices]
+    test_labels = labels[test_indices]
+    # for non random sampling need to return remaining data so confidence can be measured
+    if rest_indices is not None:
+        rest_data = data[np.array(rest_indices)]
+    # TODO why does below result in wrong number of features?
+    #train_data, train_labels = extractor.generate_features(train_records, balance_classes=False)
+    #test_data, test_labels = extractor.generate_features(test_records, balance_classes=False)
+
     # train model
     clf.fit(train_data, train_labels)
     # calculate mean accuracy since not included in other set of scores
@@ -326,7 +322,10 @@ def get_scores(clf, train_data, train_labels, test_data, test_labels):
     # evaluate accuracy of output compared to correct classification
     scores = precision_recall_fscore_support(test_labels, predicted)
 
-    return np.array([scores[0], scores[1], scores[2]]), accuracy
+    if rest_indices is not None:
+        return np.array([scores[0], scores[1], scores[2]]), accuracy, rest_data
+    else:
+        return np.array([scores[0], scores[1], scores[2]]), accuracy
 
 
 def draw_true_false_plots(scores, av_accuracy, samples_per_split):
@@ -401,9 +400,14 @@ def learning_method_comparison(splits, repeats):
     Plot learning curves to compare accuracy of different learning methods
     """
     clf = build_pipeline()
-    data, labels = load_features_data(eu_adr_only=False)
 
-    samples_per_split = (0.9/splits) * len(data)
+    # want to have original records AND data
+    records = load_records(eu_adr_only=False)
+
+    # set up extractor using desired features
+    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
+
+    samples_per_split = (0.9/splits) * len(records)
     r_scores = np.zeros(shape=(repeats, splits, 3, 2))
     u_scores = np.zeros(shape=(repeats, splits, 3, 2))
     d_scores = np.zeros(shape=(repeats, splits, 3, 2))
@@ -415,11 +419,20 @@ def learning_method_comparison(splits, repeats):
     # run test with same starting conditions
     for i in xrange(repeats):
         print i
-        r_scores[i], r_accuracy[i] = random_sampling(clf, data, labels, splits, 3*i)
-        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, data, labels, splits, 3*i)
+        # going to split the data here, then pass identical indices to the different learning methods
+        # first take off 20% for testing
+        all_indices = np.arange(len(records))
+        np.random.shuffle(all_indices)
+        test_indices = all_indices[:len(records)/5]
+        train_indices = all_indices[len(records)/5:]
+
+        # split the data here using cross validator and return
+        r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, records, train_indices, test_indices, splits)
+        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, extractor, records, train_indices, test_indices, splits)
         # if using density sampling only want to calculate similarities once
         sim = pickle.load(open('pickles/similarities.p', 'rb'))
-        d_scores[i], d_accuracy[i] = density_sampling(clf, data, labels, sim, splits, 3*i)
+        d_scores[i], d_accuracy[i] = density_sampling(clf, extractor, records, train_indices, test_indices, sim,
+                                                      splits)
 
     # create array of scores to pass to plotter
     scores = [['Accuracy'], ['Precision'], ['Recall'], ['F-Score']]
@@ -446,7 +459,6 @@ def learning_method_comparison(splits, repeats):
     for i in xrange(4):
         draw_learning_comparison(splits, scores[i][1], scores[i][2], scores[i][3], samples_per_split, repeats,
                                  scores[i][0])
-        #draw_learning_comparison(splits, r_scores, u_scores, d_scores, samples_per_split, repeats, scoring)
 
 
 def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_split, repeats, scoring):
@@ -475,4 +487,4 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
 if __name__ == '__main__':
     #learning_curves(repeats=20)
-    learning_method_comparison(repeats=20, splits=20)
+    learning_method_comparison(repeats=10, splits=20)

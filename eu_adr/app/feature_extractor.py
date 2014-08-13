@@ -3,6 +3,7 @@ import operator
 import nltk
 import random
 import numpy as np
+from sklearn.feature_extraction import DictVectorizer
 
 
 class FeatureExtractor():
@@ -35,9 +36,10 @@ class FeatureExtractor():
         feature_vectors = []
         class_vector = []
 
+        # this will now be called from learning curve scipt
         # create dictionaries if word features are going to be used
-        if self.word_features:
-            self.create_dictionaries(records, self.word_features)
+        #if self.word_features:
+            #self.create_dictionaries(records, self.word_features)
 
         for row in records:
             # store class label
@@ -47,8 +49,7 @@ class FeatureExtractor():
                 else:
                     class_vector.append(0)
 
-            # don't think there's any need to have both types since one implies the other
-            #f_vector = {'type1': row['type1'], 'type2': row['type2']}
+            # no need to have both types since one implies the other
             f_vector = {'type1': row['type1']}
             # now add the features for each part of text
             f_vector.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
@@ -65,7 +66,8 @@ class FeatureExtractor():
             feature_vectors, class_vector = self.balance_classes(feature_vectors, class_vector)
 
         # return data as numpy array for easier processing
-        return np.array(feature_vectors), np.array(class_vector)
+        #return np.array(feature_vectors), np.array(class_vector)
+        return feature_vectors, np.array(class_vector)
 
     def part_feature_vectors(self, tags, which_set):
         """
@@ -139,15 +141,10 @@ class FeatureExtractor():
         # TODO make this function less massive!
         bef_verbs, bef_nouns, bet_verbs, bet_nouns, aft_verbs, aft_nouns = [], [], [], [], [], []
 
-        # if all words are to be used
-        if how_many == -1:
-            how_many = None
-
         # first create dictionaries of all terms
         # this makes counting terms much faster since don't need to check if key exists
         # words are stemmed before being written to database so no need to stem here
         for row in records:
-            # only consider between words for now
             before = [t for t in eval(row['before_tags']) if t[0] not in self.stopwords]
             bef_verbs.extend([t[0] for t in before if t[1][0] == 'V'])
             bef_nouns.extend([t[0] for t in before if t[1][0] == 'N'])
@@ -192,6 +189,10 @@ class FeatureExtractor():
                 elif t[1][0] == 'N':
                     aft_noun_dict[t[0]] += 1
 
+        # if all words are to be used then slice is whole list
+        if how_many == -1:
+            how_many = None
+
         # now order by occurrence descending and store
         bef_verb_dict = sorted(bef_verb_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
         bef_noun_dict = sorted(bef_noun_dict.iteritems(), key=operator.itemgetter(1), reverse=True)
@@ -230,7 +231,6 @@ class FeatureExtractor():
             if v in verbs:
                 # need to make sure the same stem in different part of sentence doesn't override existing value
                 stem_dict[which_set + '_v_' + v] = 1
-
         for n in noun_list:
             if n in nouns:
                 stem_dict[which_set + '_n_' + n] = 1
