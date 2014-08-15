@@ -8,7 +8,6 @@ from scipy.spatial import distance
 
 from sklearn import preprocessing
 from sklearn import cross_validation
-from sklearn.cross_validation import train_test_split
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
@@ -422,6 +421,9 @@ def learning_method_comparison(splits, repeats):
         # going to split the data here, then pass identical indices to the different learning methods
         # first take off 20% for testing
         all_indices = np.arange(len(records))
+
+        # seed the shuffle here so can repeat experiment for different numbers of splits
+        np.random.seed(2*i)
         np.random.shuffle(all_indices)
         test_indices = all_indices[:len(records)/5]
         train_indices = all_indices[len(records)/5:]
@@ -486,5 +488,8 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
 
 if __name__ == '__main__':
-    #learning_curves(repeats=20)
-    learning_method_comparison(repeats=10, splits=20)
+    #learning_method_comparison(repeats=20, splits=5)
+    #learning_method_comparison(repeats=20, splits=10)
+    #learning_method_comparison(repeats=20, splits=20)
+    learning_method_comparison(repeats=20, splits=40)
+

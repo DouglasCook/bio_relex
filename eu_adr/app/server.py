@@ -45,6 +45,9 @@ def login():
     user_id = request.form['user']
     session['user_id'] = user_id
 
+    # save how many user has done so far in session
+    total_done(user_id)
+
     # save relation data in session
     select_relations(user_id)
     remaining_to_do(user_id)
@@ -138,13 +141,31 @@ def remaining_to_do(user_id):
         print 'still to do', session['still_to_do']
 
 
+def total_done(user_id):
+    """
+    Count how many annotations have been done by this user so far
+    """
+    with sqlite3.connect(db_path) as db:
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+        # just count number of decisions user has made
+        cursor.execute('''SELECT count(decision_id)
+                          FROM decisions
+                          WHERE user_id = ?''', [user_id])
+
+        session['total_done'] = cursor.fetchone()[0]
+
+
 @app.route('/classify')
-def classify():
+def next_to_classify():
     """
     Display next relation to be classified
     """
     next_rel = session['rels_to_classify'][int(session['next_index'])]
     before, between, after, e1, e2, prediction, type1, link = return_relation(next_rel)
+    total_so_far = session['total_done']
+    to_do_before_retraining = session['still_to_do']
 
     # set radio button to pre check the classifiers prediction
     if prediction:
@@ -161,7 +182,8 @@ def classify():
         drug_first = False
 
     return render_template('index.html', before=before, between=between, after=after, classification=pred,
-                           e1=e1, e2=e2, true_check=true_check, drug_first=drug_first, link=link)
+                           e1=e1, e2=e2, true_check=true_check, drug_first=drug_first, link=link,
+                           total_done=total_so_far, to_do=to_do_before_retraining)
 
 
 def return_relation(rel_id):
@@ -215,13 +237,16 @@ def record_decision():
     if session['next_index'] == session['number_rels'] - 1:
         return render_template('finished.html')
 
+    # increment total done
+    session['total_done'] += 1
+
     # only decrement counter if classification is true or false (not unsure or bad NER)
     if decision < 2:
         session['still_to_do'] -= 1
         print 'still to do', session['still_to_do']
 
-    # if it's time to retrain
-    if session['still_to_do'] == 0:
+    # if it's time to retrain, <= 0 to avoid potential bugs creeping in
+    if session['still_to_do'] <= 0:
         # retrain and classify remaining
         retraining.update()
         # requery relations etc

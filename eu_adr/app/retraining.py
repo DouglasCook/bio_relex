@@ -118,6 +118,6 @@ def update():
 
 if __name__ == '__main__':
     #update_correct_classifications()
-    #classify_remaining(optimise_params=False, no_biotext=False)
+    classify_remaining(optimise_params=False, no_biotext=False)
     count_true_false_predictions()
     #delete_decisions()
