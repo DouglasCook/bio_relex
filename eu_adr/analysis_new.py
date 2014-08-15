@@ -72,6 +72,7 @@ def build_pipeline():
     # TODO what type of kernel to use?
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
                     ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=1000, C=1000))])
                     #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
                     #('svm', SVC(kernel='linear'))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,

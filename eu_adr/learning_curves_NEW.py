@@ -18,6 +18,7 @@ from app.utility import time_stamped
 
 # TODO does this make sense? global thing here?
 vec = DictVectorizer()
+db_path = 'database/relex.db'
 
 
 def learning_curves(splits, repeats):
@@ -49,7 +50,7 @@ def load_records(eu_adr_only=False):
     """
     Load some part of data
     """
-    with sqlite3.connect('database/euadr_biotext.db') as db:
+    with sqlite3.connect(db_path) as db:
         # using Row as row factory means can reference fields by name instead of index
         db.row_factory = sqlite3.Row
         cursor = db.cursor()
@@ -77,8 +78,9 @@ def build_pipeline():
     clf = Pipeline([('normaliser', preprocessing.Normalizer(norm='l2')),
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
-                    ('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1000))])
+                    #('svm', SVC(kernel='rbf', gamma=10, cache_size=1000))])
     #('svm', SVC(kernel='linear'))])
     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
     #n_jobs=-1))])
@@ -488,8 +490,8 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
 
 if __name__ == '__main__':
-    #learning_method_comparison(repeats=20, splits=5)
+    learning_method_comparison(repeats=20, splits=5)
     #learning_method_comparison(repeats=20, splits=10)
     #learning_method_comparison(repeats=20, splits=20)
-    learning_method_comparison(repeats=20, splits=40)
+    #learning_method_comparison(repeats=20, splits=40)
 

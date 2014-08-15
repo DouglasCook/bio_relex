@@ -49,8 +49,8 @@ class FeatureExtractor():
                 else:
                     class_vector.append(0)
 
-            # no need to have both types since one implies the other
-            f_vector = {'type1': row['type1']}
+            # add type of each entity
+            f_vector = {'type1': row['type1'], 'type2': row['type2']}
             # now add the features for each part of text
             f_vector.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
             f_vector.update(self.part_feature_vectors(eval(row['between_tags']), 'between'))
@@ -75,12 +75,11 @@ class FeatureExtractor():
         """
         f_dict = {}
 
-        # TODO is word gap actually useful? maybe for between only?
+        # count word gap between entities only
         if self.word_gap and which_set == 'between':
             f_dict[which_set] = len(tags)
-        # add word gap for between words
-        #if which_set == 'between':
-            #f_dict['word_gap'] = len(tags)
+        #if self.word_gap:
+            #f_dict[which_set] = len(tags)
 
         # remove stopwords and things not in chunks
         tags = [t for t in tags if t[0] not in self.stopwords and t[2] != 'O']
@@ -92,9 +91,6 @@ class FeatureExtractor():
         # zip up the list with offset list to create bigrams
         #bigrams = ['-'.join([b[0], b[1]]) for b in zip(words, words[1:])]
 
-        #bigrams = '"' + ' '.join(bigrams) + '"'
-        #words = '"' + ' '.join(words) + '"'
-
         if self.word_features:
             # WORDS - check for presence of particular words
             verbs = [t[0] for t in tags if t[1][0] == 'V']
@@ -103,17 +99,16 @@ class FeatureExtractor():
 
         # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
         pos = [t[1] for t in tags if t[1] != '-NONE-']
+        # TODO do I want to ignore adjectives and adverbs?
+        #pos = [t[1] for t in tags if t[1] != '-NONE-' and t[1][0] not in ['J', 'R']]
         # use counting or non counting based on input parameter
         if self.count_dict:
             f_dict.update(self.counting_dict(pos))
         else:
             f_dict.update(self.non_counting_dict(pos))
-        #pos = '"' + ' '.join(pos) + '"'
 
         # CHUNKS - only consider beginning tags of phrases
         phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
-        # TODO add some sort of bigram chunk features?
-        #phrase_path = '"' + '-'.join([p[2:] for p in phrases]) + '"'
 
         # COMBO - combination of tag and phrase type
         # slice here to remove 'B-'
@@ -123,7 +118,6 @@ class FeatureExtractor():
             f_dict.update(self.counting_dict(combo))
         else:
             f_dict.update(self.non_counting_dict(combo))
-        #combo = '"' + ' '.join(['-'.join(combo) + '"'
 
         if self.phrase_count:
             # count number of each type of phrase
