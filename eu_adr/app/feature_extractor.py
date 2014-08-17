@@ -50,14 +50,14 @@ class FeatureExtractor():
                     class_vector.append(0)
 
             # add type of each entity
-            f_vector = {'type1': row['type1'], 'type2': row['type2']}
+            f_dict = {'type1': row['type1'], 'type2': row['type2']}
             # now add the features for each part of text
-            f_vector.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
-            f_vector.update(self.part_feature_vectors(eval(row['between_tags']), 'between'))
-            f_vector.update(self.part_feature_vectors(eval(row['after_tags']), 'after'))
+            f_dict.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
+            f_dict.update(self.part_feature_vectors(eval(row['between_tags']), 'between'))
+            f_dict.update(self.part_feature_vectors(eval(row['after_tags']), 'after'))
 
             # now add whole dictionary to list
-            feature_vectors.append(f_vector)
+            feature_vectors.append(f_dict)
 
         if no_class:
             return feature_vectors
@@ -68,6 +68,28 @@ class FeatureExtractor():
         # return data as numpy array for easier processing
         #return np.array(feature_vectors), np.array(class_vector)
         return feature_vectors, np.array(class_vector)
+
+    def generate_word_features(self, records, data):
+        """
+        Generate the word features for given records and update feature dicts in original data
+        This is done separately so it can be called once per split in learning curve creation
+        """
+        for i, row in enumerate(records):
+            # generate features for each part of sentence and add to dict
+            word_f_dict = self.one_set_word_features(eval(row['before_tags']), 'before')
+            word_f_dict.update(self.one_set_word_features(eval(row['between_tags']), 'between'))
+            word_f_dict.update(self.one_set_word_features(eval(row['after_tags']), 'after'))
+
+            # now add word feature dict to feature dict for this relation
+            data[i].update(word_f_dict)
+
+    def one_set_word_features(self, tags, which_set):
+        """
+        Generate set of word features for one part of sentence
+        """
+        verbs = [t[0] for t in tags if t[1][0] == 'V']
+        nouns = [t[0] for t in tags if t[1][0] == 'N']
+        return self.word_check(verbs, nouns, which_set)
 
     def part_feature_vectors(self, tags, which_set):
         """

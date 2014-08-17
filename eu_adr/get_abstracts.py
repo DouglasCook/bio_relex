@@ -152,17 +152,13 @@ def pubmed_query_new():
     """
     Perform search of Pubmed database using Entrez and return relevant ids
     """
-    # query taken from eu-adr corpus with the adverse effects part removed
+    # query specified by Andrew
     query = ('("crohn\'s disease"[All Fields] OR "chronic kidney disease"[All Fields]) '
              'AND hasabstract[text] AND English[lang] AND ("2012"[PDAT]: "2014"[PDAT])')
-    # retmax defines how many ids to return, defaults to 20
+    # retmax defines how many ids to return, defaults to 20 so need to increase it
     handle = Entrez.esearch(db='pubmed', term=query, retmax=1000)
     record = Entrez.read(handle)
 
-    #print record['Count']
-    #print record['QueryTranslation']
-    #return record['IdList']
-    #print record['IdList']
     pickle.dump(record['IdList'], open('pickles/pubmed_records_new.p', 'wb'))
 
 
@@ -172,7 +168,6 @@ def retrieve_abstracts():
     """
     # TODO store all records returned by query and save a pointer to next one to download
     record = pickle.load(open('pickles/pubmed_records_new.p', 'rb'))
-
     #record = pubmed_query_new()
 
     for pubmed_id in record:
@@ -224,8 +219,7 @@ def medline_to_db():
     with sqlite3.connect(db_path) as db:
         cursor = db.cursor()
 
-        # don't want to add the same sentence multiple times, so get existing ones first
-        # this might not be best way to do it
+        # don't want to add the same abstract multiple times, so get existing ones first
         cursor.execute('SELECT DISTINCT pubmed_id FROM sentences')
         # using sets to hopefully speed things up
         existing = {p[0] for p in cursor}
@@ -235,7 +229,6 @@ def medline_to_db():
         for f in files:
             with open(f, 'rb') as f_in:
                 record = Medline.read(f_in)
-                #print help(record)
                 # use medline parser to extract relevant data from the file
                 pid = record['PMID']
 
@@ -247,7 +240,6 @@ def medline_to_db():
 
                 sentences = sentence_splitter.tokenize(text)
                 for i, s in enumerate(sentences):
-                    # dict comprehension here to hack the unicode into csv writer
                     cursor.execute('''INSERT INTO sentences
                                              VALUES (NULL, ?, ?, ?, ?);''', (pid, i, s, 'pubmed'))
 

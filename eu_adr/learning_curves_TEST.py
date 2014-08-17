@@ -22,31 +22,6 @@ vec = DictVectorizer()
 db_path = 'database/relex.db'
 
 
-def learning_curves(splits, repeats):
-    """
-    Plot learning curve thingies
-    """
-    clf = build_pipeline()
-    data, labels = load_features_data(eu_adr_only=False)
-
-    samples_per_split = 0.09*len(data)
-    scores = np.zeros(shape=(repeats, 10, 3, 2))
-    accuracy = np.zeros(shape=(repeats, 10))
-
-    for i in xrange(repeats):
-        #scores[i], accuracy[i] = get_data_points(clf, data, labels, splits, i)
-        scores[i], accuracy[i] = uncertainty_sampling(clf, data, labels, splits, i)
-        #scores[i], accuracy[i] = random_sampling(clf, data, labels, splits, i)
-
-    # now need to average it out somehow
-    av_scores = scores.mean(axis=0, dtype=np.float64)
-    av_accuracy = accuracy.mean(axis=0, dtype=np.float64)
-    draw_true_false_plots(av_scores, av_accuracy, samples_per_split)
-
-    #pickle.dump(scores, open('scores.p', 'wb'))
-    #pickle.dump(av_scores, open('av_scores.p', 'wb'))
-
-
 def load_records(eu_adr_only=False, orig_only=False):
     """
     Load some part of data
@@ -93,7 +68,7 @@ def build_pipeline():
     return clf
 
 
-def random_sampling(clf, extractor, records, train_indices, test_indices, splits):
+def random_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -109,7 +84,7 @@ def random_sampling(clf, extractor, records, train_indices, test_indices, splits
     rest_indices = train_indices[no_samples:]
     train_indices = train_indices[:no_samples]
 
-    scores[0], accuracy[0] = get_scores(clf, extractor, records, train_indices, test_indices)
+    scores[0], accuracy[0] = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits):
@@ -117,12 +92,12 @@ def random_sampling(clf, extractor, records, train_indices, test_indices, splits
         # NOW NEED TO TAKE TRAIN FIRST SINCE REST WILL CHANGE
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
-        scores[i], accuracy[i] = get_scores(clf, extractor, records, train_indices, test_indices)
+        scores[i], accuracy[i] = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices)
 
     return scores, accuracy
 
 
-def uncertainty_sampling(clf, extractor, records, train_indices, test_indices, splits):
+def uncertainty_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -138,7 +113,8 @@ def uncertainty_sampling(clf, extractor, records, train_indices, test_indices, s
     rest_indices = train_indices[no_samples:]
     train_indices = train_indices[:no_samples]
 
-    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, train_indices, test_indices, rest_indices)
+    # want to copy it here so original data is not modified
+    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, rest_indices)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits):
@@ -155,13 +131,13 @@ def uncertainty_sampling(clf, extractor, records, train_indices, test_indices, s
         # add the new training data to existing
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
-        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices,
                                                        rest_indices)
 
     return scores, accuracy
 
 
-def density_sampling(clf, extractor, records, train_indices, test_indices, sim, splits):
+def density_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, sim, splits):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -177,7 +153,8 @@ def density_sampling(clf, extractor, records, train_indices, test_indices, sim, 
     rest_indices = train_indices[no_samples:]
     train_indices = train_indices[:no_samples]
 
-    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, train_indices, test_indices, rest_indices)
+    # want to copy it here so original data is not modified
+    scores[0], accuracy[0], rest_data = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, rest_indices)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits):
@@ -200,7 +177,7 @@ def density_sampling(clf, extractor, records, train_indices, test_indices, sim, 
         # add the new training data to existing
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
-        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices,
                                                        rest_indices)
 
     return scores, accuracy
@@ -246,74 +223,7 @@ def pickle_similarities():
     pickle.dump(similarities, open('pickles/similarities_all.p', 'wb'))
 
 
-def get_data_points(clf, data, labels, j):
-    """
-    Get set of data points for one curve
-    Want to add to the training data incrementally to mirror real life situtation
-    Fold are picked randomly
-    """
-    # set up array to hold scores
-    scores = np.zeros(shape=(9, 3, 2))
-    accuracy = np.zeros(shape=9)
-
-    # first split at 10%
-    train_data, test_data, train_labels, test_labels = cross_validation.train_test_split(data, labels, train_size=0.1,
-                                                                                         #random_state=j)
-                                                                                         random_state=None)
-    no_samples = len(train_data)
-    scores[0], accuracy[0] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    # now loop to create remaining training sets
-    for i in xrange(1, 9):
-        more_data, test_data, more_labels, test_labels = cross_validation.train_test_split(test_data, test_labels,
-                                                                                           train_size=no_samples,
-                                                                                           #random_state=i*j)
-                                                                                           random_state=None)
-        # add the new training data to existing
-        train_data = np.append(train_data, more_data, axis=0)
-        train_labels = np.append(train_labels, more_labels)
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    return scores, accuracy
-
-
-def nicer_get_data_points(clf, data, labels, j):
-    """
-    Get set of data points for one curve
-    Want to add to the training data incrementally to mirror real life situtation
-    """
-    # TODO problem here is with the random state, how can I make the experiment repeatable?
-    # set up arrays to hold scores and indices
-    scores = np.zeros(shape=(9, 3, 2))
-    accuracy = np.zeros(shape=9)
-    train_indices = np.array([], dtype=int)
-
-    # set up stratified 10 fold cross validator, use specific random state for proper comparison
-    # passing specific random state in here means same split is used every time
-    cv = cross_validation.StratifiedKFold(labels, shuffle=True, n_folds=10, random_state=None)
-
-    # iterating through the cv gives lists of indices for each fold
-    # use test set for training since it is 10% of total data
-    # TODO better way to do this?
-    for i, (_, train) in enumerate(cv):
-        if i == 9:
-            print train_indices
-            break
-        # first add new fold to existing for training data and labels
-        train_indices = np.append(train_indices, train)
-        train_data = data[train_indices]
-        train_labels = labels[train_indices]
-
-        # then use complement for testing
-        test_data = np.delete(data, train_indices, 0)
-        test_labels = np.delete(labels, train_indices, 0)
-
-        scores[i], accuracy[i] = get_scores(clf, train_data, train_labels, test_data, test_labels)
-
-    return scores, accuracy
-
-
-def get_scores(clf, extractor, records, train_indices, test_indices, rest_indices=None):
+def get_scores(clf, extractor, records, orig_data, labels, train_indices, test_indices, rest_indices=None):
     """
     Return array of scores
     """
@@ -323,9 +233,16 @@ def get_scores(clf, extractor, records, train_indices, test_indices, rest_indice
     # word features must be selected based on training set only otherwise test data contaminates training set
     extractor.create_dictionaries(train_records, how_many=5)
 
-    data, labels = extractor.generate_features(records)
-    print len(data[0])
+    # copy orig data here so it is not modified?
+    data = orig_data
+
+    # now add word features to the data
+    #print data[0]
+    #print len(data[0])
+    extractor.generate_word_features(records, data)
     # convert from dict to array
+    #print data[0]
+    #print len(data[0])
     data = vec.fit_transform(data).toarray()
 
     train_data = data[train_indices]
@@ -354,83 +271,17 @@ def get_scores(clf, extractor, records, train_indices, test_indices, rest_indice
         return np.array([scores[0], scores[1], scores[2]]), accuracy
 
 
-def draw_true_false_plots(scores, av_accuracy, samples_per_split):
-    """
-    Create plots for precision, recall and f-score
-    """
-    #scores = pickle.load(open('av_scores.p', 'rb'))
-    # TODO change this to use numpy slices eg [:, 0]
-    false_p = [s[0][0] for s in scores]
-    true_p = [s[0][1] for s in scores]
-    false_r = [s[1][0] for s in scores]
-    true_r = [s[1][1] for s in scores]
-    false_f = [s[2][0] for s in scores]
-    true_f = [s[2][1] for s in scores]
-
-    # create ticks for x axis
-    ticks = np.linspace(samples_per_split, 10*samples_per_split, 10)
-
-    '''
-    plot(ticks, true_p, false_p, 'Precision', 'plots/' + time_stamped('precision_2j_random.png'))
-    plot(ticks, true_r, false_r, 'Recall', 'plots/' + time_stamped('recall_2j_random.png'))
-    plot(ticks, true_f, false_f, 'F-score', 'plots/' + time_stamped('fscore_2j_random.png'))
-    plot(ticks, av_accuracy, None, 'Accuracy', 'plots/' + time_stamped('accuracy_2j_random.png'))
-    '''
-
-    plot(ticks, true_p, false_p, 'Precision', 'plots/uncertainty_comparison/precision_3j_random.png')
-    plot(ticks, true_r, false_r, 'Recall', 'plots/uncertainty_comparison/recall_3j_random.png')
-    plot(ticks, true_f, false_f, 'F-score', 'plots/uncertainty_comparison/fscore_3j_random.png')
-    plot(ticks, av_accuracy, None, 'Accuracy', 'plots/uncertainty_comparison/accuracy_3j_random.png')
-
-
-def plot(ticks, true, false, scoring, filepath):
-    """
-    Plot given values
-    """
-    # set up the figure
-    plt.figure()
-    plt.grid()
-    plt.xlabel('Training Instances')
-    plt.ylabel('Score')
-    plt.title(scoring)
-
-    # if false not none then we are dealing with normal scores
-    if false:
-        # plot raw data points
-        plt.plot(ticks, true, label='True relations')
-        plt.plot(ticks, false, label='False relations')
-    # else must be accuracy
-    else:
-        plt.plot(ticks, true, label='Average accuracy')
-
-    # now fit polynomial (straight line) to the points and extend plot out
-    x_new = np.linspace(ticks.min(), 2*ticks.max())
-    true_coefs = np.polyfit(ticks, true, deg=1)
-    true_fitted = np.polyval(true_coefs, x_new)
-    plt.plot(x_new, true_fitted)
-
-    # only plot false if not on accuracy score
-    if false:
-        false_coefs = np.polyfit(ticks, false, deg=1)
-        false_fitted = np.polyval(false_coefs, x_new)
-        plt.plot(x_new, false_fitted)
-
-    plt.legend(loc='best')
-
-    plt.savefig(filepath, format='png')
-    plt.clf()
-
-
 def learning_method_comparison(splits, repeats):
     """
     Plot learning curves to compare accuracy of different learning methods
     """
     clf = build_pipeline()
     # set up extractor using desired features
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
+    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=0)
 
     # want to have original records AND data
     records = load_records(eu_adr_only=False)
+    orig_data, orig_labels = extractor.generate_features(records)
 
     # TODO what is the deal here???
     # this needs to match whatever percentage is being used for testing
@@ -462,9 +313,9 @@ def learning_method_comparison(splits, repeats):
         train_indices = all_indices[len(records)/5:]
 
         # split the data here using cross validator and return
-        r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, records, train_indices, test_indices, splits)
-        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, extractor, records, train_indices, test_indices, splits)
-        d_scores[i], d_accuracy[i] = density_sampling(clf, extractor, records, train_indices, test_indices, sim,
+        r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, splits)
+        u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, splits)
+        d_scores[i], d_accuracy[i] = density_sampling(clf, extractor, records, orig_data, orig_labels, train_indices, test_indices, sim,
                                                       splits)
 
     # create array of scores to pass to plotter
@@ -520,13 +371,10 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
 if __name__ == '__main__':
     #pickle_similarities()
-    #learning_method_comparison(repeats=10, splits=5)
-    #learning_method_comparison(repeats=20, splits=10)
-    #learning_method_comparison(repeats=20, splits=20)
-    #learning_method_comparison(repeats=20, splits=40)
-
     start = time()
     learning_method_comparison(repeats=2, splits=5)
     end = time()
     print 'running time =', end - start
-
+    #learning_method_comparison(repeats=20, splits=10)
+    #learning_method_comparison(repeats=20, splits=20)
+    #learning_method_comparison(repeats=20, splits=40)

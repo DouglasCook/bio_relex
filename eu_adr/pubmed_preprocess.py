@@ -10,7 +10,7 @@ db_path = 'database/test.db'
 def relevant_into_temp():
     """
     Populate temporary table with relevant sentences from pubmed query
-    NEED TO DO THIS ON THE SERVER!
+    This is a very slow process so NEED TO DO IT ON THE SERVER!
     """
     with sqlite3.connect(db_path) as db:
         db.row_factory = sqlite3.Row
@@ -32,7 +32,7 @@ def relevant_into_temp():
                 disorder_present = False
                 treatment_present = False
 
-                # TODO may want to be certain that these are the only entities we are interested in
+                # check all entities that have been tagged
                 for key in entity_dict:
                     if entity_dict[key][0] == 'Indication':
                         disorder_present = True
