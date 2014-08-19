@@ -282,6 +282,9 @@ class FeatureExtractor():
         false = together[:false_count]
         true = together[false_count+1:]
 
+        # use seed so experiment is repeatable
+        random.seed(0)
+
         # undersample the over represented class
         if true_count < false_count:
             false = random.sample(false, true_count)

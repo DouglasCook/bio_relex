@@ -22,17 +22,19 @@ def go():
     Test the shiz
     """
     train, test = load_data()
-    # TODO change from int to bool, number of features now decided in create_dictionaries function
     #extractor = FeatureExtractor(word_features=True, phrase_count=True, word_gap=True, count_dict=True)
 
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
-                                 combo=True, pos=True)
+    #extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                 #combo=True, pos=True)
+
+    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=False, word_features=True,
+                                 combo=True, pos=True, before=False)
 
     # create dicts based on training only
     extractor.create_dictionaries(train, how_many=5)
 
     train_data, train_labels = extractor.generate_features(train, balance_classes=False)
-    test_data, test_labels = extractor.generate_features(test, balance_classes=False)
+    test_data, test_labels = extractor.generate_features(test, balance_classes=True)
 
     vec = DictVectorizer()
     # need to put together so features match

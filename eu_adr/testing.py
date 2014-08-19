@@ -11,6 +11,10 @@ from sklearn.feature_extraction import DictVectorizer
 from app.feature_extractor import FeatureExtractor
 from app.utility import time_stamped
 
+import new_data_curves
+import final_results
+
+"""
 vec = DictVectorizer()
 db_path = 'database/relex.db'
 
@@ -43,3 +47,17 @@ if data_orig == data_new:
     print 'booyah'
 else:
     print 'nein!'
+"""
+
+if __name__ == '__main__':
+    for i in xrange(1, 6):
+        print i, 'cross validating'
+        final_results.learning_comparison(splits=5, seed=i, which_set='original')
+        final_results.learning_comparison(splits=10, seed=i, which_set='original')
+        final_results.learning_comparison(splits=20, seed=i, which_set='original')
+        final_results.learning_comparison(splits=40, seed=i, which_set='original')
+        print i, 'separate test set'
+        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i)
+        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i)
+        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i)
+        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i)
