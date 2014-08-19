@@ -13,7 +13,8 @@ class FeatureExtractor():
     # stopwords for use in cleaning up sentences
     stopwords = nltk.corpus.stopwords.words('english')
 
-    def __init__(self, word_features=0, word_gap=True, count_dict=True, phrase_count=True):
+    def __init__(self, word_features=False, word_gap=True, count_dict=True, phrase_count=True, combo=True, pos=True,
+                 entity_type=True, before=True, between=True, after=True):
         """
         Store variables for which features to use
         """
@@ -22,6 +23,12 @@ class FeatureExtractor():
         self.word_gap = word_gap
         self.count_dict = count_dict
         self.phrase_count = phrase_count
+        self.pos = pos
+        self.combo = combo
+        self.entity_type = entity_type
+        self.before = before
+        self.between = between
+        self.after = after
 
         # create dicts for word features if they are going to be used
         if word_features:
@@ -49,12 +56,17 @@ class FeatureExtractor():
                 else:
                     class_vector.append(0)
 
-            # add type of each entity
-            f_dict = {'type1': row['type1'], 'type2': row['type2']}
+            f_dict = {}
+            if self.entity_type:
+                # add type of each entity
+                f_dict.update({'type1': row['type1'], 'type2': row['type2']})
             # now add the features for each part of text
-            f_dict.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
-            f_dict.update(self.part_feature_vectors(eval(row['between_tags']), 'between'))
-            f_dict.update(self.part_feature_vectors(eval(row['after_tags']), 'after'))
+            if self.before:
+                f_dict.update(self.part_feature_vectors(eval(row['before_tags']), 'before'))
+            if self.between:
+                f_dict.update(self.part_feature_vectors(eval(row['between_tags']), 'between'))
+            if self.after:
+                f_dict.update(self.part_feature_vectors(eval(row['after_tags']), 'after'))
 
             # now add whole dictionary to list
             feature_vectors.append(f_dict)
@@ -68,28 +80,6 @@ class FeatureExtractor():
         # return data as numpy array for easier processing
         #return np.array(feature_vectors), np.array(class_vector)
         return feature_vectors, np.array(class_vector)
-
-    def generate_word_features(self, records, data):
-        """
-        Generate the word features for given records and update feature dicts in original data
-        This is done separately so it can be called once per split in learning curve creation
-        """
-        for i, row in enumerate(records):
-            # generate features for each part of sentence and add to dict
-            word_f_dict = self.one_set_word_features(eval(row['before_tags']), 'before')
-            word_f_dict.update(self.one_set_word_features(eval(row['between_tags']), 'between'))
-            word_f_dict.update(self.one_set_word_features(eval(row['after_tags']), 'after'))
-
-            # now add word feature dict to feature dict for this relation
-            data[i].update(word_f_dict)
-
-    def one_set_word_features(self, tags, which_set):
-        """
-        Generate set of word features for one part of sentence
-        """
-        verbs = [t[0] for t in tags if t[1][0] == 'V']
-        nouns = [t[0] for t in tags if t[1][0] == 'N']
-        return self.word_check(verbs, nouns, which_set)
 
     def part_feature_vectors(self, tags, which_set):
         """
@@ -119,35 +109,59 @@ class FeatureExtractor():
             nouns = [t[0] for t in tags if t[1][0] == 'N']
             f_dict.update(self.word_check(verbs, nouns, which_set))
 
-        # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
-        pos = [t[1] for t in tags if t[1] != '-NONE-']
-        # TODO do I want to ignore adjectives and adverbs?
-        #pos = [t[1] for t in tags if t[1] != '-NONE-' and t[1][0] not in ['J', 'R']]
-        # use counting or non counting based on input parameter
-        if self.count_dict:
-            f_dict.update(self.counting_dict(pos))
-        else:
-            f_dict.update(self.non_counting_dict(pos))
+        if self.pos:
+            # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
+            pos = [t[1] for t in tags if t[1] != '-NONE-']
+            # TODO do I want to ignore adjectives and adverbs?
+            #pos = [t[1] for t in tags if t[1] != '-NONE-' and t[1][0] not in ['J', 'R']]
+            # use counting or non counting based on input parameter
+            if self.count_dict:
+                f_dict.update(self.counting_dict(pos))
+            else:
+                f_dict.update(self.non_counting_dict(pos))
 
         # CHUNKS - only consider beginning tags of phrases
         phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
 
         # COMBO - combination of tag and phrase type
-        # slice here to remove 'B-'
-        combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]
-        # use counting or non counting based on input parameter
-        if self.count_dict:
-            f_dict.update(self.counting_dict(combo))
-        else:
-            f_dict.update(self.non_counting_dict(combo))
+        if self.combo:
+            # slice here to remove 'B-'
+            combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]
+            # use counting or non counting based on input parameter
+            if self.count_dict:
+                f_dict.update(self.counting_dict(combo))
+            else:
+                f_dict.update(self.non_counting_dict(combo))
 
-        if self.phrase_count:
-            # count number of each type of phrase
-            f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
-            f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
-            f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
+            if self.phrase_count:
+                # count number of each type of phrase
+                f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
+                f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
+                f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
 
         return f_dict
+
+    def generate_word_features(self, records, data):
+        """
+        Generate the word features for given records and update feature dicts in original data
+        This is done separately so it can be called once per split in learning curve creation
+        """
+        for i, row in enumerate(records):
+            # generate features for each part of sentence and add to dict
+            word_f_dict = self.one_set_word_features(eval(row['before_tags']), 'before')
+            word_f_dict.update(self.one_set_word_features(eval(row['between_tags']), 'between'))
+            word_f_dict.update(self.one_set_word_features(eval(row['after_tags']), 'after'))
+
+            # now add word feature dict to feature dict for this relation
+            data[i].update(word_f_dict)
+
+    def one_set_word_features(self, tags, which_set):
+        """
+        Generate set of word features for one part of sentence
+        """
+        verbs = [t[0] for t in tags if t[1][0] == 'V']
+        nouns = [t[0] for t in tags if t[1][0] == 'N']
+        return self.word_check(verbs, nouns, which_set)
 
     def create_dictionaries(self, records, how_many):
         """

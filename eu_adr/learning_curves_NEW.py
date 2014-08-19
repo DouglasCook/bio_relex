@@ -85,8 +85,8 @@ def build_pipeline():
                     #('svm', SVC(kernel='rbf', gamma=10))])
                     #('svm', SVC(kernel='sigmoid'))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=2000, C=1000))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1000))])
-                    ('svm', SVC(kernel='rbf', gamma=10, cache_size=1000, C=1000))])
+                    #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=10000))])
+                    ('svm', SVC(kernel='rbf', gamma=30, cache_size=1000, C=1000))])
                     #('svm', SVC(kernel='linear'))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
                     #n_jobs=-1))])
@@ -117,6 +117,7 @@ def random_sampling(clf, extractor, records, train_indices, test_indices, splits
         # NOW NEED TO TAKE TRAIN FIRST SINCE REST WILL CHANGE
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
+        #print 'random', len(train_indices)
         scores[i], accuracy[i] = get_scores(clf, extractor, records, train_indices, test_indices)
 
     return scores, accuracy
@@ -155,8 +156,13 @@ def uncertainty_sampling(clf, extractor, records, train_indices, test_indices, s
         # add the new training data to existing
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
-        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
-                                                       rest_indices)
+        #print 'uncertainty', len(train_indices)
+
+        if len(rest_indices) > 0:
+            scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+                                                           rest_indices)
+        else:
+            scores[i], accuracy[i] = get_scores(clf, extractor, records, train_indices, test_indices, None)
 
     return scores, accuracy
 
@@ -200,8 +206,13 @@ def density_sampling(clf, extractor, records, train_indices, test_indices, sim, 
         # add the new training data to existing
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
-        scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
-                                                       rest_indices)
+        #print 'density', len(train_indices)
+
+        if len(rest_indices) > 0:
+            scores[i], accuracy[i], rest_data = get_scores(clf, extractor, records, train_indices, test_indices,
+                                                           rest_indices)
+        else:
+            scores[i], accuracy[i] = get_scores(clf, extractor, records, train_indices, test_indices, None)
 
     return scores, accuracy
 
@@ -324,7 +335,7 @@ def get_scores(clf, extractor, records, train_indices, test_indices, rest_indice
     extractor.create_dictionaries(train_records, how_many=5)
 
     data, labels = extractor.generate_features(records)
-    print len(data[0])
+    #print len(data[0])
     # convert from dict to array
     data = vec.fit_transform(data).toarray()
 
@@ -430,11 +441,14 @@ def learning_method_comparison(splits, repeats):
     extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
 
     # want to have original records AND data
-    records = load_records(eu_adr_only=False)
+    records = load_records(eu_adr_only=False, orig_only=False)
+    #print 'total records', len(records)
 
     # TODO what is the deal here???
     # this needs to match whatever percentage is being used for testing
-    samples_per_split = (0.8/splits) * len(records)
+    #samples_per_split = (0.8/splits) * len(records)
+    samples_per_split = 4 * len(records)/(5 * splits)
+    #print 'samples per split', samples_per_split
 
     # if using density sampling only want to calculate similarities once
     sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
@@ -447,23 +461,27 @@ def learning_method_comparison(splits, repeats):
     u_accuracy = np.zeros(shape=(repeats, splits))
     d_accuracy = np.zeros(shape=(repeats, splits))
 
-    # run test with same starting conditions
+    # loop number of times to generate average scores
     for i in xrange(repeats):
         print i
         # going to split the data here, then pass identical indices to the different learning methods
         all_indices = np.arange(len(records))
 
         # seed the shuffle here so can repeat experiment for different numbers of splits
-        np.random.seed(2*i)
+        np.random.seed(5*i)
         np.random.shuffle(all_indices)
 
         # take off 20% for testing
-        test_indices = all_indices[:len(records)/5]
-        train_indices = all_indices[len(records)/5:]
+        # want the training set to be of a nice fixed size, rounding errors go into test set
+        # this means that learning curves will always start and finish at same points
+        test_indices = all_indices[4*(len(records)/5):]
+        #print 'testing', len(test_indices)
+        train_indices = all_indices[:4*(len(records)/5)]
+        #print 'training', len(train_indices)
 
-        # split the data here using cross validator and return
-        r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, records, train_indices, test_indices, splits)
+        # now use same test and train indices to generate scores for each learning method
         u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, extractor, records, train_indices, test_indices, splits)
+        r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, records, train_indices, test_indices, splits)
         d_scores[i], d_accuracy[i] = density_sampling(clf, extractor, records, train_indices, test_indices, sim,
                                                       splits)
 
@@ -520,13 +538,17 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
 if __name__ == '__main__':
     #pickle_similarities()
-    #learning_method_comparison(repeats=10, splits=5)
+    start = time()
+    learning_method_comparison(repeats=10, splits=5)
+    #learning_method_comparison(repeats=20, splits=5)
     #learning_method_comparison(repeats=20, splits=10)
     #learning_method_comparison(repeats=20, splits=20)
     #learning_method_comparison(repeats=20, splits=40)
-
-    start = time()
-    learning_method_comparison(repeats=2, splits=5)
     end = time()
     print 'running time =', end - start
+
+    #start = time()
+    #learning_method_comparison(repeats=2, splits=5)
+    #end = time()
+    #print 'running time =', end - start
 

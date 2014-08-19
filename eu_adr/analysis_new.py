@@ -27,41 +27,53 @@ def create_results():
     clf = build_pipeline()
 
     # set up output file
-    with open('results/feature_selection_poly.csv', 'wb') as f_out:
+    with open('results/feature_selection_all_words.csv', 'wb') as f_out:
         csv_writer = csv.writer(f_out, delimiter=',')
         csv_writer.writerow(['features', 'accuracy', 'auroc', 'true_P', 'true_R', 'true_F',
                              'false_P', 'false_R', 'false_F', 'average_P', 'average_R', 'average_F'])
 
+        # first using all words and no other features
+        extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=False, word_features=False,
+                                     combo=True, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'words only')
+
+        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=False, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'all words and gap')
+
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, word_features=True,
+                                     combo=False, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'all words and phrase count')
+
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                     combo=False, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos')
+
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                     combo=True, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos, combo')
+
         '''
-        # first using all words
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=-1)
-        write_scores(csv_writer, clf, extractor, 'all')
-        '''
+        # first using all words and no other features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=False, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'words only')
 
-        # only 5 most common words in each part of sentence
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
-        write_scores(csv_writer, clf, extractor, 'all')
+        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=False, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'all words and gap')
 
-        # no word features
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True)
-        write_scores(csv_writer, clf, extractor, 'no word specific')
-        '''
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, word_features=True,
+                                     combo=False, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'all words and phrase count')
 
-        # no word counting
-        extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=True)
-        write_scores(csv_writer, clf, extractor, 'no word count')
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                     combo=False, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos')
 
-        # no phrase counting
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=False)
-        write_scores(csv_writer, clf, extractor, 'no phrase count')
-
-        # non counting dictionaries
-        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=True)
-        write_scores(csv_writer, clf, extractor, 'non-counting dict')
-
-        # non counting dictionaries
-        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False)
-        write_scores(csv_writer, clf, extractor, 'non-counting dict')
+        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                     combo=True, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos, combo')
         '''
 
 
@@ -69,22 +81,22 @@ def build_pipeline():
     """
     Set up classfier here to avoid repetition
     """
-    # TODO what type of kernel to use?
+    # TODO what type of kernel to use? linear for original feature experiments?
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
+                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=1000, C=1000))])
                     #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
-                    #('svm', SVC(kernel='linear'))])
+                    ('svm', SVC(kernel='linear', cache_size=1000))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
                     # n_jobs=-1))])
     return clf
 
 
-def write_scores(csv_writer, clf, extractor, features):
+def write_scores(csv_writer, clf, extractor, how_many, features):
     """
     Write one set of scores to csv
     """
-    scores, accuracy, auroc = cross_validated_scores(clf, extractor)
+    scores, accuracy, auroc = cross_validated_scores(clf, extractor, how_many)
 
     for i in xrange(10):
         row = [features, accuracy[i], auroc[i],
@@ -96,7 +108,7 @@ def write_scores(csv_writer, clf, extractor, features):
         csv_writer.writerow(row)
 
 
-def cross_validated_scores(clf, extractor):
+def cross_validated_scores(clf, extractor, how_many):
     """
     Calculate scores using 10 fold cross validation
     """
@@ -105,16 +117,26 @@ def cross_validated_scores(clf, extractor):
     accuracy = np.zeros(shape=10)
     auroc = np.zeros(shape=10)
 
-    features, labels = load_features_data(extractor)
-    # transform from dict into array for training
-    vec = DictVectorizer()
-    data = vec.fit_transform(features).toarray()
+    records = load_records()
+    #bullshit = np.zeros(len(records))
 
+    # TODO ask about stratified or not stratified
     # set up stratified 10 fold cross validator, use specific random state for proper comparison
-    cv = cross_validation.StratifiedKFold(labels, shuffle=True, n_folds=10, random_state=1)
+    cv = cross_validation.KFold(len(records), shuffle=True, n_folds=10, random_state=10)
 
     # iterating through the cv gives lists of indices for each fold
     for i, (train, test) in enumerate(cv):
+        # set up word features based on training set only
+        train_records = [records[j] for j in train]
+        print len(train_records)
+        extractor.create_dictionaries(train_records, how_many)
+        #print extractor.bet_verb_dict
+
+        # now generate features
+        data, labels = extractor.generate_features(records)
+        vec = DictVectorizer()
+        data = vec.fit_transform(data).toarray()
+
         train_data, test_data = data[train], data[test]
         train_labels, test_labels = labels[train], labels[test]
 
@@ -125,7 +147,7 @@ def cross_validated_scores(clf, extractor):
     return scores, accuracy, auroc
 
 
-def load_features_data(extractor):
+def load_features_data(extractor, how_many):
     """
     Load some part of data
     """
@@ -140,7 +162,26 @@ def load_features_data(extractor):
 
     records = cursor.fetchall()
 
+    extractor.create_dictionaries(records, how_many)
+
     return extractor.generate_features(records, balance_classes=False)
+
+
+def load_records():
+    """
+    Load some part of data
+    """
+    with sqlite3.connect('database/euadr_biotext.db') as db:
+        # using Row as row factory means can reference fields by name instead of index
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
+
+        cursor.execute('''SELECT relations.*
+                          FROM relations NATURAL JOIN sentences
+                          WHERE sentences.source != 'pubmed';''')
+
+    records = cursor.fetchall()
+    return records
 
 
 def get_scores(clf, train_data, train_labels, test_data, test_labels):
