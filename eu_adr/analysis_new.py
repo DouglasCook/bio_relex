@@ -27,33 +27,51 @@ def create_results():
     clf = build_pipeline()
 
     # set up output file
-    with open('results/feature_selection_all_words.csv', 'wb') as f_out:
+    with open('results/new/feature_selection_all_words.csv', 'wb') as f_out:
         csv_writer = csv.writer(f_out, delimiter=',')
         csv_writer.writerow(['features', 'accuracy', 'auroc', 'true_P', 'true_R', 'true_F',
                              'false_P', 'false_R', 'false_F', 'average_P', 'average_R', 'average_F'])
 
         # first using all words and no other features
-        extractor = FeatureExtractor(word_gap=False, count_dict=True, phrase_count=False, word_features=False,
-                                     combo=True, pos=True)
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=False, pos=False, entity_type=False)
         write_scores(csv_writer, clf, extractor, -1, 'words only')
+        print 'done'
+
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=False, pos=False, entity_type=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words and type')
+        print 'done'
 
         extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
-                                     combo=False, pos=False)
-        write_scores(csv_writer, clf, extractor, -1, 'all words and gap')
+                                     combo=False, pos=False, entity_type=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, type')
+        print 'done'
 
-        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, word_features=True,
-                                     combo=False, pos=False)
-        write_scores(csv_writer, clf, extractor, -1, 'all words and phrase count')
-
-        extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
                                      combo=False, pos=True)
-        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos')
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, type, non-count pos')
+        print 'done'
+
+        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=True, pos=False)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, type, non-count combo')
+        print 'done'
+
+        extractor = FeatureExtractor(word_gap=True, count_dict=False, phrase_count=False, word_features=True,
+                                     combo=True, pos=True)
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, type, non-count pos combo')
+        print 'done'
 
         extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
                                      combo=True, pos=True)
-        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, pos, combo')
+        write_scores(csv_writer, clf, extractor, -1, 'all words, gap, phrase count, count pos combo')
+        print 'done'
+
 
         '''
+        ################################################################
+
         # first using all words and no other features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True,
                                      combo=False, pos=False)
@@ -86,7 +104,8 @@ def build_pipeline():
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=1000))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=1000, C=1000))])
                     #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000))])
-                    ('svm', SVC(kernel='linear', cache_size=1000))])
+                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=2000, C=10))])
+                    #('svm', SVC(kernel='linear', cache_size=2000))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
                     # n_jobs=-1))])
     return clf
@@ -122,15 +141,17 @@ def cross_validated_scores(clf, extractor, how_many):
 
     # TODO ask about stratified or not stratified
     # set up stratified 10 fold cross validator, use specific random state for proper comparison
-    cv = cross_validation.KFold(len(records), shuffle=True, n_folds=10, random_state=10)
+    cv = cross_validation.KFold(len(records), shuffle=True, n_folds=10, random_state=1)
 
     # iterating through the cv gives lists of indices for each fold
     for i, (train, test) in enumerate(cv):
+        '''
         # set up word features based on training set only
         train_records = [records[j] for j in train]
         print len(train_records)
         extractor.create_dictionaries(train_records, how_many)
         #print extractor.bet_verb_dict
+        '''
 
         # now generate features
         data, labels = extractor.generate_features(records)

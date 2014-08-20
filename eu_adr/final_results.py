@@ -65,23 +65,26 @@ def build_pipeline():
                     #('svm', SVC(kernel='sigmoid'))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=2000, C=1000))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=10000))])
-                    ('svm', SVC(kernel='rbf', gamma=30, cache_size=1000, C=1000))])
+                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=2000, C=10))])
                     #('svm', SVC(kernel='linear'))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
                     #n_jobs=-1))])
     return clf
 
 
-def get_similarities(vectors):
+def get_similarities(records, extractor):
     """
     Calculate similarities of vectors ie one to all others
     """
+    data, _ = extractor.generate_features(records)
+    data = vec.fit_transform(data).toarray()
+
     print 'calculating similarities'
-    similarities = np.zeros(len(vectors))
-    for i, v in enumerate(vectors):
+    similarities = np.zeros(len(data))
+    for i, v in enumerate(data):
         print i
         total = 0
-        others = np.delete(vectors, i, 0)
+        others = np.delete(data, i, 0)
 
         # loop through all other vectors and get total cosine distance
         for x in others:
@@ -89,12 +92,11 @@ def get_similarities(vectors):
 
         # cos_similarity = 1 - av_cos_dist
         similarities[i] = 1 - total/len(others)
-    print 'finished calculating similarities'
 
     return similarities
 
 
-def pickle_similarities(which_set):
+def pickle_similarities(which_set, extractor=None):
     """
     Pickle similarities based on all records
     """
@@ -106,15 +108,14 @@ def pickle_similarities(which_set):
         orig, new = load_records(which_set)
         len_orig = len(orig)
 
-    # set up extractor using desired features
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
-    extractor.create_dictionaries(records, how_many=5)
+    if not extractor:
+        # set up extractor using desired features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
+        extractor.create_dictionaries(records, how_many=5)
 
-    data, _ = extractor.generate_features(records)
-    data = vec.fit_transform(data).toarray()
-    similarities = get_similarities(data)
+    similarities = get_similarities(records, extractor)
 
-    pickle.dump(similarities, open('pickles/similarities_all.p', 'wb'))
+    pickle.dump(similarities, open('pickles/similarities_all_words_only.p', 'wb'))
 
 
 def random_sampling(clf, data, labels, sets, splits, seed):
@@ -272,10 +273,12 @@ def learning_comparison(splits, seed, which_set=None):
 
     clf = build_pipeline()
     # can't use word features as they are here, it would be cheating since using the test data
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=False)
+    # TODO similarities extractor MUST match this for it to be valid
+    extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
 
     # load similarities for use in density sampling
-    sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
+    #sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
+    sim = get_similarities(records, extractor)
 
     data, labels = extractor.generate_features(records)
     data = vec.fit_transform(data).toarray()
@@ -309,17 +312,17 @@ def learning_comparison(splits, seed, which_set=None):
 
     samples_per_split = len(data)/splits
 
-    f_name = 'pickles/newCrossValidCurves_seed%s_splits%s.p' % (seed, splits)
-    pickle.dump(scores, open(f_name, 'wb'))
+    #f_name = 'pickles/newCrossValidCurves_seed%s_splits%s.p' % (seed, splits)
+    #pickle.dump(scores, open(f_name, 'wb'))
 
     for i in xrange(4):
         draw_learning_comparison(splits, scores[i][1], scores[i][2], scores[i][3], samples_per_split, scores[i][0])
 
 
 if __name__ == '__main__':
-    learning_comparison(splits=5, seed=1, which_set='new')
+    #learning_comparison(splits=5, seed=1, which_set='new')
     #learning_comparison(splits=10, seed=1, which_set='new')
     #learning_comparison(splits=20, seed=1, which_set='new')
     #learning_comparison(40, which_set='original')
-    #pickle_similarities(which_set='original')
+    pickle_similarities(which_set='original')
 

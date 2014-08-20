@@ -58,7 +58,7 @@ def build_pipeline():
                     #('svm', SVC(kernel='sigmoid'))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=2000, C=1000))])
                     #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=10000))])
-                    ('svm', SVC(kernel='rbf', gamma=30, cache_size=1000, C=1000))])
+                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=2000, C=10))])
     #('svm', SVC(kernel='linear'))])
     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
     #n_jobs=-1))])
@@ -194,16 +194,19 @@ def density_sampling(clf, extractor, orig_records, new_records, train_indices, t
     return scores, accuracy
 
 
-def get_similarities(vectors):
+def get_similarities(records, extractor):
     """
     Calculate similarities of vectors ie one to all others
     """
+    data, _ = extractor.generate_features(records)
+    data = vec.fit_transform(data).toarray()
+
     print 'calculating similarities'
-    similarities = np.zeros(len(vectors))
-    for i, v in enumerate(vectors):
+    similarities = np.zeros(len(data))
+    for i, v in enumerate(data):
         print i
         total = 0
-        others = np.delete(vectors, i, 0)
+        others = np.delete(data, i, 0)
 
         # loop through all other vectors and get total cosine distance
         for x in others:
@@ -211,7 +214,6 @@ def get_similarities(vectors):
 
         # cos_similarity = 1 - av_cos_dist
         similarities[i] = 1 - total/len(others)
-    print 'finished calculating similarities'
 
     return similarities
 
@@ -229,9 +231,7 @@ def pickle_similarities():
     extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=5)
     extractor.create_dictionaries(all_records, how_many=5)
 
-    data, _ = extractor.generate_features(all_records)
-    data = vec.fit_transform(data).toarray()
-    similarities = get_similarities(data)
+    similarities = get_similarities(all_records, extractor)
 
     # only want to pickle new data since orig always used for training
     pickle.dump(similarities[orig_length:], open('pickles/similarities_all.p', 'wb'))
@@ -314,7 +314,7 @@ def learning_method_comparison(splits, repeats, seed):
     """
     clf = build_pipeline()
     # set up extractor using desired features
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True)
+    extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
 
     # orig will always be use for training, new will be used for testing and added incrementally
     orig_records, new_records = load_records()
@@ -327,7 +327,10 @@ def learning_method_comparison(splits, repeats, seed):
     #print 'samples per split', samples_per_split
 
     # if using density sampling only want to calculate similarities once
-    sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
+    #sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
+    all_records = orig_records + new_records
+    sim = get_similarities(all_records, extractor)
+    sim = sim[len(orig_records)]
 
     r_scores = np.zeros(shape=(repeats, splits, 3, 2))
     u_scores = np.zeros(shape=(repeats, splits, 3, 2))
@@ -385,8 +388,8 @@ def learning_method_comparison(splits, repeats, seed):
         scores[i+1].append(u_scores[:, i])
         scores[i+1].append(d_scores[:, i])
 
-    f_name = 'pickles/newCurves_seed%s_splits%s.p' % (seed, splits)
-    pickle.dump(scores, open(f_name, 'wb'))
+    #f_name = 'pickles/newCurves_seed%s_splits%s.p' % (seed, splits)
+    #pickle.dump(scores, open(f_name, 'wb'))
 
     for i in xrange(4):
         draw_learning_comparison(splits, scores[i][1], scores[i][2], scores[i][3], samples_per_split, repeats,
@@ -397,7 +400,7 @@ if __name__ == '__main__':
     #pickle_similarities()
     start = time()
     #learning_method_comparison(repeats=10, splits=5)
-    learning_method_comparison(repeats=1, splits=5, seed=1)
+    learning_method_comparison(repeats=3, splits=5, seed=1)
     #learning_method_comparison(repeats=20, splits=10, seed=1)
     #learning_method_comparison(repeats=20, splits=20, seed=1)
     #learning_method_comparison(repeats=20, splits=40)

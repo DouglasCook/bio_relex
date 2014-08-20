@@ -50,6 +50,25 @@ else:
 """
 
 if __name__ == '__main__':
+    print 'cross valid'
+    final_results.learning_comparison(splits=5, seed=1, which_set='original')
+    print 'done1'
+    final_results.learning_comparison(splits=10, seed=1, which_set='original')
+    print 'done2'
+    final_results.learning_comparison(splits=20, seed=1, which_set='original')
+    print 'done3'
+    final_results.learning_comparison(splits=40, seed=1, which_set='original')
+    print 'done4'
+    print 'separate test set'
+    new_data_curves.learning_method_comparison(splits=5, repeats=20, seed=1)
+    print 'done1'
+    new_data_curves.learning_method_comparison(splits=10, repeats=20, seed=1)
+    print 'done2'
+    new_data_curves.learning_method_comparison(splits=20, repeats=20, seed=1)
+    print 'done3'
+    new_data_curves.learning_method_comparison(splits=40, repeats=20, seed=1)
+    print 'done4'
+    '''
     for i in xrange(1, 6):
         print i, 'cross validating'
         final_results.learning_comparison(splits=5, seed=i, which_set='original')
@@ -61,3 +80,4 @@ if __name__ == '__main__':
         new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i)
         new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i)
         new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i)
+    '''

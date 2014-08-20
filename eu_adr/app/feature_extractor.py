@@ -104,10 +104,16 @@ class FeatureExtractor():
         #bigrams = ['-'.join([b[0], b[1]]) for b in zip(words, words[1:])]
 
         if self.word_features:
+            # don't take numbers into consideration, is this justifiable?
+            words = [t[0] for t in tags if not re.match('.?\d', t[0])]
+            for w in words:
+                f_dict[w] = 1
+            '''
             # WORDS - check for presence of particular words
             verbs = [t[0] for t in tags if t[1][0] == 'V']
             nouns = [t[0] for t in tags if t[1][0] == 'N']
             f_dict.update(self.word_check(verbs, nouns, which_set))
+            '''
 
         if self.pos:
             # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
