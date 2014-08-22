@@ -24,17 +24,17 @@ def go():
     train, test = load_data()
     #extractor = FeatureExtractor(word_features=True, phrase_count=True, word_gap=True, count_dict=True)
 
-    #extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
-                                 #combo=True, pos=True)
+    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=True, word_features=True,
+                                 combo=True, pos=True)
 
-    extractor = FeatureExtractor(word_gap=True, count_dict=True, phrase_count=False, word_features=True,
-                                 combo=True, pos=True, before=False)
+    #extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True,
+                                 #combo=False, pos=False)
 
     # create dicts based on training only
     extractor.create_dictionaries(train, how_many=5)
 
     train_data, train_labels = extractor.generate_features(train, balance_classes=False)
-    test_data, test_labels = extractor.generate_features(test, balance_classes=True)
+    test_data, test_labels = extractor.generate_features(test, balance_classes=False)
 
     vec = DictVectorizer()
     # need to put together so features match
@@ -54,7 +54,7 @@ def build_pipeline():
     Set up classfier here to avoid repetition
     """
     clf = Pipeline([('normaliser', preprocessing.Normalizer()),
-                    ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=10000))])
+                    ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, cache_size=2000))])
                     #('svm', SVC(kernel='rbf', gamma=30, cache_size=1000, C=10000))])
                     #('svm', SVC(kernel='linear', cache_size=1000, C=10000))])
                     #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,

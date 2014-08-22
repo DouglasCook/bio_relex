@@ -14,12 +14,14 @@ class FeatureExtractor():
     stopwords = nltk.corpus.stopwords.words('english')
 
     def __init__(self, word_features=False, word_gap=True, count_dict=True, phrase_count=True, combo=True, pos=True,
-                 entity_type=True, before=True, between=True, after=True):
+                 entity_type=True, bag_of_words=False, bigrams=False, before=True, between=True, after=True):
         """
         Store variables for which features to use
         """
         # types of features to be extracted
         self.word_features = word_features
+        self.bag_of_words = bag_of_words
+        self.bigrams = bigrams
         self.word_gap = word_gap
         self.count_dict = count_dict
         self.phrase_count = phrase_count
@@ -78,8 +80,7 @@ class FeatureExtractor():
             feature_vectors, class_vector = self.balance_classes(feature_vectors, class_vector)
 
         # return data as numpy array for easier processing
-        #return np.array(feature_vectors), np.array(class_vector)
-        return feature_vectors, np.array(class_vector)
+        return np.array(feature_vectors), np.array(class_vector)
 
     def part_feature_vectors(self, tags, which_set):
         """
@@ -103,17 +104,23 @@ class FeatureExtractor():
         # zip up the list with offset list to create bigrams
         #bigrams = ['-'.join([b[0], b[1]]) for b in zip(words, words[1:])]
 
-        if self.word_features:
+        # this uses a bag of words representation, no other features
+        if self.bag_of_words:
             # don't take numbers into consideration, is this justifiable?
             words = [t[0] for t in tags if not re.match('.?\d', t[0])]
             for w in words:
                 f_dict[w] = 1
-            '''
+            if self.bigrams:
+                bigrams = ['-'.join([w[0], w[1]]) for w in zip(words, words[1:])]
+                for b in bigrams:
+                    f_dict[b] = 1
+
+        if self.word_features:
+            # don't take numbers into consideration, is this justifiable?
             # WORDS - check for presence of particular words
             verbs = [t[0] for t in tags if t[1][0] == 'V']
             nouns = [t[0] for t in tags if t[1][0] == 'N']
             f_dict.update(self.word_check(verbs, nouns, which_set))
-            '''
 
         if self.pos:
             # POS - remove NONE tags here, seems to improve results slightly, shouldn't use untaggable stuff
@@ -139,11 +146,12 @@ class FeatureExtractor():
             else:
                 f_dict.update(self.non_counting_dict(combo))
 
-            if self.phrase_count:
-                # count number of each type of phrase
-                f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
-                f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
-                f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
+        if self.phrase_count:
+            # count number of each type of phrase
+            f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
+            f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
+            # don't include prepositional phrases
+            #f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
 
         return f_dict
 

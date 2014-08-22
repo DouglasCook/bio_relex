@@ -14,6 +14,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import precision_recall_fscore_support
 from sklearn.pipeline import Pipeline
 from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
 
 from app.feature_extractor import FeatureExtractor
 from app.utility import time_stamped
@@ -56,20 +57,30 @@ def load_records(which_set):
         return orig, new
 
 
-def build_pipeline():
+def build_pipeline(bag_of_words):
     """
-    Set up classfier here to avoid repetition
+    Set up classfier and extractor here to avoid repetition
     """
-    clf = Pipeline([('normaliser', preprocessing.Normalizer(norm='l2')),
-                    #('svm', SVC(kernel='rbf', gamma=10))])
-                    #('svm', SVC(kernel='sigmoid'))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=1, cache_size=2000, C=1000))])
-                    #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=10000))])
-                    ('svm', SVC(kernel='rbf', gamma=1, cache_size=2000, C=10))])
-                    #('svm', SVC(kernel='linear'))])
-                    #('random_forest', RandomForestClassifier(n_estimators=10, max_features='sqrt', bootstrap=False,
-                    #n_jobs=-1))])
-    return clf
+    if bag_of_words:
+        clf = Pipeline([#('vectoriser', DictVectorizer()),
+                        ('normaliser', preprocessing.Normalizer(norm='l2')),
+                        ('svm', LinearSVC(dual=True, C=1))])
+        # set up extractor using desired features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
+        sim = pickle.load(open('pickles/similarities_orig_bag_of_words.p', 'rb'))
+
+    else:
+        clf = Pipeline([#('vectoriser', DictVectorizer(sparse=False)),
+                        ('normaliser', preprocessing.Normalizer(norm='l2')),
+                        ('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
+        # set up extractor using desired features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
+        #extractor.create_dictionaries(all_records, how_many=5)
+        sim = pickle.load(open('pickles/similarities_orig_features_only.p', 'rb'))
+
+    return clf, extractor, sim
 
 
 def get_similarities(records, extractor):
@@ -110,12 +121,19 @@ def pickle_similarities(which_set, extractor=None):
 
     if not extractor:
         # set up extractor using desired features
-        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
-        extractor.create_dictionaries(records, how_many=5)
+        '''
+        # FOR THE SPARSE LINEAR SVM
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
+        '''
+        # FOR THE FEATURES ONE
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
 
     similarities = get_similarities(records, extractor)
 
-    pickle.dump(similarities, open('pickles/similarities_all_words_only.p', 'wb'))
+    #pickle.dump(similarities, open('pickles/similarities_orig_bag_of_words.p', 'wb'))
+    pickle.dump(similarities, open('pickles/similarities_orig_features_only.p', 'wb'))
 
 
 def random_sampling(clf, data, labels, sets, splits, seed):
@@ -255,7 +273,7 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     plt.clf()
 
 
-def learning_comparison(splits, seed, which_set=None):
+def learning_comparison(splits, seed, which_set=None, bag_of_words=False):
     """
     Compare random, uncertainty and information density approaches
     """
@@ -271,21 +289,15 @@ def learning_comparison(splits, seed, which_set=None):
         orig, new = load_records(which_set)
         len_orig = len(orig)
 
-    clf = build_pipeline()
-    # can't use word features as they are here, it would be cheating since using the test data
-    # TODO similarities extractor MUST match this for it to be valid
-    extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
+    clf, extractor, sim = build_pipeline(bag_of_words)
+    data, labels = extractor.generate_features(records)
+    data = vec.fit_transform(data).toarray()
 
     # load similarities for use in density sampling
     #sim = pickle.load(open('pickles/similarities_all.p', 'rb'))
-    sim = get_similarities(records, extractor)
-
-    data, labels = extractor.generate_features(records)
-    data = vec.fit_transform(data).toarray()
-    # initialise to empty arrays
+    #sim = get_similarities(records, extractor)
 
     # set up splits to test on
-    # TODO stratify this maybe?
     sets = cross_validation.StratifiedKFold(labels, shuffle=True, n_folds=splits, random_state=seed)
 
     r_accuracy, r_precision, r_recall, r_fscore = random_sampling(clf, data, labels, sets, splits, seed)
@@ -312,17 +324,17 @@ def learning_comparison(splits, seed, which_set=None):
 
     samples_per_split = len(data)/splits
 
-    #f_name = 'pickles/newCrossValidCurves_seed%s_splits%s.p' % (seed, splits)
-    #pickle.dump(scores, open(f_name, 'wb'))
+    f_name = 'pickles/newCrossValidCurves_seed%s_splits%s.p' % (seed, splits)
+    pickle.dump(scores, open(f_name, 'wb'))
 
     for i in xrange(4):
         draw_learning_comparison(splits, scores[i][1], scores[i][2], scores[i][3], samples_per_split, scores[i][0])
 
 
 if __name__ == '__main__':
-    #learning_comparison(splits=5, seed=1, which_set='new')
-    #learning_comparison(splits=10, seed=1, which_set='new')
-    #learning_comparison(splits=20, seed=1, which_set='new')
+    learning_comparison(splits=5, seed=2, which_set='original', bag_of_words=True)
+    learning_comparison(splits=10, seed=2, which_set='original', bag_of_words=True)
+    learning_comparison(splits=20, seed=2, which_set='original', bag_of_words=True)
     #learning_comparison(40, which_set='original')
-    pickle_similarities(which_set='original')
+    #pickle_similarities(which_set='original')
 
