@@ -43,10 +43,7 @@ def classify_remaining(optimise_params=False, no_biotext=False):
     f_extractor = FeatureExtractor()
     # set up classifier with link to feature extractor
     #clf = Classifier(f_extractor, optimise_params, no_biotext)
-    #clf = SVMlinear(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
     clf = SVMpoly(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
-    #clf = SVMrbf(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
-    #clf = RandomForest(f_extractor, use_db=True, optimise_params=optimise_params, no_biotext=no_biotext)
 
     with sqlite3.connect(db_path) as db:
         # need to return dictionary so it matches csv stuff

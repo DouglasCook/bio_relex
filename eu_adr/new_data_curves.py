@@ -24,7 +24,7 @@ vec = DictVectorizer()
 db_path = 'database/relex.db'
 
 
-def load_records():
+def load_records(orig_only):
     """
     Load original and new data sets
     """
@@ -36,7 +36,8 @@ def load_records():
         # all records from original corpus
         cursor.execute('''SELECT relations.*
                           FROM relations NATURAL JOIN sentences
-                          WHERE sentences.source != 'pubmed';''')
+                          WHERE sentences.source != 'pubmed'
+                          ORDER BY rel_id;''')
 
         orig = cursor.fetchall()
 
@@ -44,14 +45,18 @@ def load_records():
         cursor.execute('''SELECT relations.*
                           FROM relations NATURAL JOIN sentences
                           WHERE sentences.source = 'pubmed' AND
-                                true_rel IS NOT NULL;''')
+                                true_rel IS NOT NULL
+                          ORDER BY rel_id;''')
 
         new = cursor.fetchall()
 
-    return orig, new
+    if orig_only:
+        return [], orig
+    else:
+        return orig, new
 
 
-def build_pipeline(bag_of_words):
+def build_pipeline(bag_of_words, orig_only):
     """
     Set up classfier and extractor here to avoid repetition
     """
@@ -62,17 +67,25 @@ def build_pipeline(bag_of_words):
         # set up extractor using desired features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
-        sim = pickle.load(open('pickles/similarities_bag_of_words.p', 'rb'))
+        if orig_only:
+            sim = pickle.load(open('pickles/orig_similarities_bag_of_words.p', 'rb'))
+        else:
+            sim = pickle.load(open('pickles/similarities_bag_of_words.p', 'rb'))
 
     else:
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
-                        ('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
+                        #('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
+                        ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1))])
+                        #('svm', LinearSVC(dual=True, C=1))])
         # set up extractor using desired features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
         #extractor.create_dictionaries(all_records, how_many=5)
-        sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
+        if orig_only:
+            sim = pickle.load(open('pickles/orig_similarities_features_only.p', 'rb'))
+        else:
+            sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
 
     return clf, extractor, sim
 
@@ -179,11 +192,14 @@ def density_sampling(clf, extractor, orig_records, new_records, train_indices, t
         # absolute value so both classes are considered
         confidence = np.absolute(confidence)
 
-        # TODO may want to scale weighting between uncertainty and similarity score
+        # load relevant similarities
         rest_sim = sim[np.array(rest_indices)]
-        #rest_sim **= 0.8
+        # TODO may want to scale weighting between uncertainty and similarity score
+        # uses beta parameter as a power, linearly scaling will have no effect!
+        #rest_sim **= 2
 
-        # weigh the confidence based on similarity measure
+        # weigh the confidence based on similarity measure, lower confidence is preferred (since its distance)
+        # divide by similarity since cosine similarity = 1 when vectors are the same
         #confidence = np.multiply(confidence, rest_sim)
         confidence = np.divide(confidence, rest_sim)
         # zip it all together and order by confidence
@@ -235,32 +251,43 @@ def get_similarities(records, extractor, orig_length):
     return similarities
 
 
-def pickle_similarities():
+def pickle_similarities(orig_only, bag_of_words):
     """
     Pickle similarities for newly annotated data only
     """
     # TODO this is kind of wrong since the similarities will change as the word features are generated per split
-    orig_records, new_records = load_records()
+    orig_records, new_records = load_records(orig_only)
     all_records = orig_records + new_records
     orig_length = len(orig_records)
 
-    '''
     # set up extractor using desired features
-    # FOR THE SPARSE LINEAR SVM
-    extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
-                                 entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
-    '''
-    # FOR THE FEATURES ONE
-    extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
-                                 entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
-    #extractor.create_dictionaries(all_records, how_many=5)
-    #extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
+    if bag_of_words:
+        # FOR THE SPARSE LINEAR SVM
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
+        if orig_only:
+            f_name = 'pickles/orig_similarities_bag_of_words.p'
+        else:
+            f_name = 'pickles/similarities_bag_of_words.p'
+
+    else:
+        # FOR THE FEATURES ONE
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
+        '''
+        # BELOW FOR SPECIFIC WORD FEATURES
+        #extractor.create_dictionaries(all_records, how_many=5)
+        #extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, word_features=True)
+        '''
+        if orig_only:
+            f_name = 'pickles/orig_similarities_features_only.p'
+        else:
+            f_name = 'pickles/similarities_features_only.p'
 
     similarities = get_similarities(all_records, extractor, orig_length)
 
     # only want to pickle new data since orig always used for training
-    #pickle.dump(similarities[orig_length:], open('pickles/similarities_bag_of_words.p', 'wb'))
-    pickle.dump(similarities[orig_length:], open('pickles/similarities_features_only.p', 'wb'))
+    pickle.dump(similarities[orig_length:], open(f_name, 'wb'))
 
 
 def get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices, rest_indices=None):
@@ -340,14 +367,14 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     plt.clf()
 
 
-def learning_method_comparison(splits, repeats, seed, bag_of_words=False):
+def learning_method_comparison(splits, repeats, seed, bag_of_words=False, orig_only=False):
     """
     Plot learning curves to compare accuracy of different learning methods
     """
-    clf, extractor, sim = build_pipeline(bag_of_words)
+    clf, extractor, sim = build_pipeline(bag_of_words, orig_only)
 
     # orig will always be use for training, new will be used for testing and added incrementally
-    orig_records, new_records = load_records()
+    orig_records, new_records = load_records(orig_only)
 
     # TODO what is the deal here???
     # this needs to match whatever percentage is being used for testing
@@ -434,9 +461,9 @@ if __name__ == '__main__':
     start = time()
     #learning_method_comparison(repeats=10, splits=5)
     # CANNOT USE SEED ZERO
-    learning_method_comparison(repeats=10, splits=5, seed=2, bag_of_words=False)
-    learning_method_comparison(repeats=10, splits=10, seed=2, bag_of_words=False)
-    learning_method_comparison(repeats=10, splits=20, seed=2, bag_of_words=False)
+    learning_method_comparison(repeats=10, splits=5, seed=1, bag_of_words=False, orig_only=False)
+    learning_method_comparison(repeats=10, splits=10, seed=1, bag_of_words=False, orig_only=False)
+    learning_method_comparison(repeats=10, splits=20, seed=1, bag_of_words=False, orig_only=False)
     #learning_method_comparison(repeats=10, splits=5, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=10, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=20, seed=2, bag_of_words=False)
@@ -445,6 +472,11 @@ if __name__ == '__main__':
     print 'running time =', end - start
     '''
 
+    '''
     sim = pickle.load(open('pickles/similarities_bag_of_words.p', 'rb'))
     sim3 = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
-    pickle_similarities()
+    '''
+    pickle_similarities(orig_only=True, bag_of_words=False)
+    pickle_similarities(orig_only=True, bag_of_words=True)
+    pickle_similarities(orig_only=False, bag_of_words=False)
+    pickle_similarities(orig_only=False, bag_of_words=True)

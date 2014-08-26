@@ -416,10 +416,12 @@ def tune_parameters(type):
         # use linear svm for sparse bag of words feature vector
         pipeline = Pipeline([('vectoriser', DictVectorizer()),
                              ('normaliser', preprocessing.Normalizer()),
-                             ('svm', SVC(kernel='poly', cache_size=2000))])
+                             #('svm', SVC(kernel='poly', cache_size=2000))])
+                             ('svm', SVC(kernel='poly', degree=3, C=1, gamma=2, cache_size=2000))])
 
-        param_grid = [{'svm__C': np.array([1, 10]), 'svm__gamma': np.array([1, 10]),
-                      'svm__degree': np.array([2, 3, 4, 5]), 'svm__coef0': np.array([1, 2, 3, 4])}]
+        #param_grid = [{'svm__C': np.array([1, 10]), 'svm__gamma': np.array([1, 10]),
+                      #'svm__degree': np.array([2, 3, 4, 5]), 'svm__coef0': np.array([1, 2, 3, 4])}]
+        param_grid = [{'svm__coef0': np.array([1, 2, 3, 4])}]
 
     elif type == 'sigmoid':
         print 'sigmoid'
@@ -446,9 +448,9 @@ def tune_parameters(type):
 
 if __name__ == '__main__':
     #create_results()
-    tune_parameters('bag_of_words')
+    #tune_parameters('bag_of_words')
     #tune_parameters('sigmoid')
     #tune_parameters('linear')
     #tune_parameters('rbf')
-    #tune_parameters('poly')
+    tune_parameters('poly')
     #plot_roc_curve()

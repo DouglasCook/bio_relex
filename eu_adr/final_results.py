@@ -68,7 +68,7 @@ def build_pipeline(bag_of_words):
         # set up extractor using desired features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
-        sim = pickle.load(open('pickles/similarities_orig_bag_of_words.p', 'rb'))
+        sim = pickle.load(open('pickles/cross_valid_similarities_orig_bag_of_words.p', 'rb'))
 
     else:
         clf = Pipeline([#('vectoriser', DictVectorizer(sparse=False)),
@@ -78,7 +78,7 @@ def build_pipeline(bag_of_words):
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
         #extractor.create_dictionaries(all_records, how_many=5)
-        sim = pickle.load(open('pickles/similarities_orig_features_only.p', 'rb'))
+        sim = pickle.load(open('pickles/cross_valid_similarities_orig_features_only.p', 'rb'))
 
     return clf, extractor, sim
 
@@ -132,8 +132,8 @@ def pickle_similarities(which_set, extractor=None):
 
     similarities = get_similarities(records, extractor)
 
-    #pickle.dump(similarities, open('pickles/similarities_orig_bag_of_words.p', 'wb'))
-    pickle.dump(similarities, open('pickles/similarities_orig_features_only.p', 'wb'))
+    #pickle.dump(similarities, open('pickles/cross_valid_similarities_orig_bag_of_words.p', 'wb'))
+    pickle.dump(similarities, open('pickles/cross_valid_similarities_orig_features_only.p', 'wb'))
 
 
 def random_sampling(clf, data, labels, sets, splits, seed):
@@ -332,9 +332,13 @@ def learning_comparison(splits, seed, which_set=None, bag_of_words=False):
 
 
 if __name__ == '__main__':
+    '''
     learning_comparison(splits=5, seed=2, which_set='original', bag_of_words=True)
     learning_comparison(splits=10, seed=2, which_set='original', bag_of_words=True)
     learning_comparison(splits=20, seed=2, which_set='original', bag_of_words=True)
     #learning_comparison(40, which_set='original')
     #pickle_similarities(which_set='original')
+    '''
+    scores = pickle.load(open('new_plots/seed1_splits5.p', 'rb'))
+    print scores
 
