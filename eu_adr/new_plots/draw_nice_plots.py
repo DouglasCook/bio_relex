@@ -9,6 +9,7 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     """
     # create ticks for x axis
     # add size of original data to get correct values on x
+    # TODO do this properly so that the final point is all of the data
     ticks = np.linspace(orig_size + samples_per_split, orig_size + (splits*samples_per_split), splits)
 
     buffer_space = (max - min)/10.0
