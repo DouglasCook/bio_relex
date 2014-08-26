@@ -59,7 +59,7 @@ if __name__ == '__main__':
         final_results.learning_comparison(splits=40, seed=i, which_set='original')
         '''
         print i, 'separate test set'
-        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i)
-        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i)
-        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i)
-        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i)
+        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i, bag_of_words=True, orig_only=False)
+        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i, bag_of_words=True, orig_only=False)
+        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i, bag_of_words=True, orig_only=False)
+        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i, bag_of_words=True, orig_only=False)

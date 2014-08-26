@@ -99,7 +99,8 @@ def random_sampling(clf, extractor, orig_records, new_records, train_indices, te
     # set up array to hold scores
     scores = np.zeros(shape=(splits, 3, 2))
     accuracy = np.zeros(shape=splits)
-    no_samples = int(round(len(train_indices)/float(splits)))
+    # floor division to guarantee correct number of splits
+    no_samples = len(train_indices)/splits
 
     # now take first split for training and leave remainder
     # NEED TO TAKE REST FIRST SINCE TRAIN WILL CHANGE
@@ -134,8 +135,8 @@ def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indice
     # set up array to hold scores
     scores = np.zeros(shape=(splits, 3, 2))
     accuracy = np.zeros(shape=splits)
-    # pretty ugly way to round up the number of instances
-    no_samples = int(round(len(train_indices)/float(splits)))
+    # floor division to guarantee correct number of splits
+    no_samples = len(train_indices)/splits
     print 'number samples', no_samples
 
     # now take first split for training and leave remainder
@@ -342,7 +343,7 @@ def learning_method_comparison(splits, repeats, seed, bag_of_words=False, orig_o
     orig_records, new_records = load_records(orig_only)
 
     # samples per split = number of records remaining after removing test set divided by number of splits
-    samples_per_split = int(round(4 * len(new_records)/(5.0 * splits)))
+    samples_per_split = (4 * len(new_records))/(5 * splits)
     print 'samples per split', samples_per_split
 
     # TODO below used if similarities are to be generated each run (so extractor is def correct)
