@@ -59,12 +59,14 @@ if __name__ == '__main__':
         final_results.learning_comparison(splits=40, seed=i, which_set='original')
         '''
         print i, 'separate test set'
-        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i, bag_of_words=True, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i, bag_of_words=True, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i, bag_of_words=True, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i, bag_of_words=True, orig_only=True)
+        print i, 'orig only'
+        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i, bag_of_words=2, orig_only=True, word_features=5)
+        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i, bag_of_words=2, orig_only=True, word_features=5)
+        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i, bag_of_words=2, orig_only=True, word_features=5)
+        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i, bag_of_words=2, orig_only=True, word_features=5)
 
-        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i, bag_of_words=False, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i, bag_of_words=False, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i, bag_of_words=False, orig_only=True)
-        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i, bag_of_words=False, orig_only=True)
+        print i, 'all data'
+        new_data_curves.learning_method_comparison(splits=5, repeats=30, seed=i, bag_of_words=2, orig_only=False, word_features=5)
+        new_data_curves.learning_method_comparison(splits=10, repeats=30, seed=i, bag_of_words=2, orig_only=False, word_features=5)
+        new_data_curves.learning_method_comparison(splits=20, repeats=30, seed=i, bag_of_words=2, orig_only=False, word_features=5)
+        new_data_curves.learning_method_comparison(splits=40, repeats=30, seed=i, bag_of_words=2, orig_only=False, word_features=5)

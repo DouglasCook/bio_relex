@@ -72,7 +72,8 @@ def build_pipeline(bag_of_words, orig_only):
     """
     Set up classfier and extractor here to avoid repetition
     """
-    if bag_of_words:
+    if bag_of_words == 1:
+        # BAG OF WORDS FEATURES
         clf = Pipeline([('vectoriser', DictVectorizer()),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
                         ('svm', LinearSVC(dual=True, C=1))])
@@ -84,16 +85,30 @@ def build_pipeline(bag_of_words, orig_only):
         else:
             sim = pickle.load(open('pickles/similarities_bag_of_words.p', 'rb'))
 
-    else:
+    elif bag_of_words == 2:
+        # ACTIVELY GENERATED WORD FEATURES
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
-                        ('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
+                        ('svm', LinearSVC(dual=True, C=1))])
+        # set up extractor using desired features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
+                                     entity_type=True, word_features=True, bag_of_words=False, bigrams=False,
+                                     after=False)
+        if orig_only:
+            sim = pickle.load(open('pickles/orig_no_accents_similarities_features_only.p', 'rb'))
+        else:
+            sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
+
+    else:
+        # NON-WORD FEATURES
+        clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
+                        ('normaliser', preprocessing.Normalizer(norm='l2')),
+                        #('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
                         #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1))])
-                        #('svm', LinearSVC(dual=True, C=1))])
+                        ('svm', LinearSVC(dual=True, C=1))])
         # set up extractor using desired features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
-        #extractor.create_dictionaries(all_records, how_many=5)
         if orig_only:
             sim = pickle.load(open('pickles/orig_no_accents_similarities_features_only.p', 'rb'))
         else:
@@ -102,7 +117,7 @@ def build_pipeline(bag_of_words, orig_only):
     return clf, extractor, sim
 
 
-def random_sampling(clf, extractor, orig_records, new_records, train_indices, test_indices, splits):
+def random_sampling(clf, extractor, orig_records, new_records, train_indices, test_indices, splits, word_features):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -119,7 +134,8 @@ def random_sampling(clf, extractor, orig_records, new_records, train_indices, te
     rest_indices = train_indices[no_samples:]
     train_indices = train_indices[:no_samples]
 
-    scores[0], accuracy[0] = get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices)
+    scores[0], accuracy[0] = get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices,
+                                        word_features=word_features)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits - 1):
@@ -128,17 +144,19 @@ def random_sampling(clf, extractor, orig_records, new_records, train_indices, te
         train_indices = np.append(train_indices, rest_indices[:no_samples])
         rest_indices = rest_indices[no_samples:]
         #print 'random', len(train_indices)
-        scores[i], accuracy[i] = get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices)
+        scores[i], accuracy[i] = get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices,
+                                            word_features=word_features)
 
     # for last split add all remaining data
     train_indices = np.append(train_indices, rest_indices)
     scores[splits-1], accuracy[splits-1] = get_scores(clf, extractor, orig_records, new_records, train_indices,
-                                                      test_indices)
+                                                      test_indices, word_features=word_features)
 
     return scores, accuracy
 
 
-def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indices, test_indices, splits, sim=None):
+def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indices, test_indices, splits, word_features,
+                         sim=None):
     """
     Get set of data points for one curve
     Want to add to the training data incrementally to mirror real life situtation
@@ -157,7 +175,7 @@ def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indice
     train_indices = train_indices[:no_samples]
 
     scores[0], accuracy[0], rest_data = get_scores(clf, extractor, orig_records, new_records, train_indices,
-                                                   test_indices, rest_indices)
+                                                   test_indices, rest_indices, word_features)
 
     # now loop to create remaining training sets
     for i in xrange(1, splits - 1):
@@ -166,6 +184,7 @@ def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indice
         # absolute value so both classes are considered
         confidence = np.absolute(confidence)
 
+        # if using density sampling
         if sim is not None:
             # load relevant similarities
             rest_sim = sim[np.array(rest_indices)]
@@ -187,14 +206,14 @@ def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indice
         rest_indices = rest_indices[no_samples:]
         # calculate scores and return rest of data for use in sampling
         scores[i], accuracy[i], rest_data = get_scores(clf, extractor, orig_records, new_records, train_indices,
-                                                       test_indices, rest_indices)
+                                                       test_indices, rest_indices, word_features)
 
     print 'final batch', len(rest_indices)
     # last split done differently
     # add remaining data for last split so all data is used
     train_indices = np.append(train_indices, rest_indices)
     scores[splits-1], accuracy[splits-1] = get_scores(clf, extractor, orig_records, new_records, train_indices,
-                                                      test_indices, None)
+                                                      test_indices, None, word_features)
 
     return scores, accuracy
 
@@ -267,7 +286,8 @@ def pickle_similarities(orig_only, bag_of_words):
     pickle.dump(similarities[orig_length:], open(f_name, 'wb'))
 
 
-def get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices, rest_indices=None):
+def get_scores(clf, extractor, orig_records, new_records, train_indices, test_indices, rest_indices=None,
+               word_features=0):
     """
     Return array of scores
     """
@@ -275,8 +295,10 @@ def get_scores(clf, extractor, orig_records, new_records, train_indices, test_in
     train_records = [new_records[i] for i in train_indices] + orig_records
     test_records = [new_records[i] for i in test_indices]
 
-    # word features must be selected based on training set only otherwise test data contaminates training set
-    #extractor.create_dictionaries(train_records, how_many=5)
+    # if actively generated word features are being used
+    if word_features:
+        #word features must be selected based on training set only otherwise test data contaminates training set
+        extractor.create_dictionaries(train_records, how_many=word_features)
 
     train_data, train_labels = extractor.generate_features(train_records)
     test_data, test_labels = extractor.generate_features(test_records)
@@ -345,7 +367,7 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     plt.clf()
 
 
-def learning_method_comparison(splits, repeats, seed, bag_of_words=False, orig_only=False):
+def learning_method_comparison(splits, repeats, seed, bag_of_words=0, orig_only=False, word_features=0):
     """
     Plot learning curves to compare accuracy of different learning methods
     """
@@ -387,11 +409,11 @@ def learning_method_comparison(splits, repeats, seed, bag_of_words=False, orig_o
 
         # now use same test and train indices to generate scores for each learning method
         u_scores[i], u_accuracy[i] = uncertainty_sampling(clf, extractor, orig_records, new_records, train_indices,
-                                                          test_indices, splits, None)
+                                                          test_indices, splits, word_features)
         d_scores[i], d_accuracy[i] = uncertainty_sampling(clf, extractor, orig_records, new_records, train_indices,
-                                                          test_indices, splits, sim)
+                                                          test_indices, splits, word_features, sim)
         r_scores[i], r_accuracy[i] = random_sampling(clf, extractor, orig_records, new_records, train_indices,
-                                                     test_indices, splits)
+                                                     test_indices, splits, word_features)
 
     # create array of scores to pass to plotter
     scores = [['Accuracy'], ['Precision'], ['Recall'], ['F-Score']]
@@ -428,9 +450,9 @@ if __name__ == '__main__':
     start = time()
     #learning_method_comparison(repeats=10, splits=5)
     # CANNOT USE SEED ZERO
-    learning_method_comparison(repeats=10, splits=5, seed=1, bag_of_words=False, orig_only=True)
-    learning_method_comparison(repeats=10, splits=10, seed=1, bag_of_words=False, orig_only=True)
-    learning_method_comparison(repeats=10, splits=20, seed=1, bag_of_words=False, orig_only=True)
+    learning_method_comparison(repeats=5, splits=5, seed=2, bag_of_words=2, orig_only=False, word_features=5)
+    learning_method_comparison(repeats=5, splits=10, seed=2, bag_of_words=2, orig_only=False, word_features=5)
+    learning_method_comparison(repeats=5, splits=20, seed=2, bag_of_words=2, orig_only=False, word_features=5)
     #learning_method_comparison(repeats=10, splits=5, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=10, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=20, seed=2, bag_of_words=False)
