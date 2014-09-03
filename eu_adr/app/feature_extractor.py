@@ -88,14 +88,21 @@ class FeatureExtractor():
         """
         f_dict = {}
 
-        # count word gap between entities only
-        if self.word_gap and which_set == 'between':
-            f_dict[which_set] = len(tags)
-        #if self.word_gap:
-            #f_dict[which_set] = len(tags)
+        # CHUNKS - only consider beginning tags of phrases, needs to be done before stopwords are removed
+        phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
+        if self.phrase_count:
+            # count number of each type of phrase
+            f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
+            f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
+            # don't include prepositional phrases
+            #f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
 
         # remove stopwords and things not in chunks
         tags = [t for t in tags if t[0] not in self.stopwords and t[2] != 'O']
+
+        # count word gap between entities only
+        if self.word_gap and which_set == 'between':
+            f_dict[which_set] = len(tags)
 
         # TODO see if some sort of word features could be added back in
         # WORDS - remove numbers here, they should not be considered when finding most common words
@@ -133,25 +140,15 @@ class FeatureExtractor():
             else:
                 f_dict.update(self.non_counting_dict(pos))
 
-        # CHUNKS - only consider beginning tags of phrases
-        phrases = [t[2] for t in tags if t[2] and t[2][0] == 'B']
-
         # COMBO - combination of tag and phrase type
         if self.combo:
             # slice here to remove 'B-'
-            combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2]]
+            combo = ['-'.join([t[1], t[2][2:]]) for t in tags if t[2] and t[1] != '--NONE--']
             # use counting or non counting based on input parameter
             if self.count_dict:
                 f_dict.update(self.counting_dict(combo))
             else:
                 f_dict.update(self.non_counting_dict(combo))
-
-        if self.phrase_count:
-            # count number of each type of phrase
-            f_dict['nps'] = sum(1 for p in phrases if p == 'B-NP')
-            f_dict['vps'] = sum(1 for p in phrases if p == 'B-VP')
-            # don't include prepositional phrases
-            #f_dict['pps'] = sum(1 for p in phrases if p == 'B-PP')
 
         return f_dict
 

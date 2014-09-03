@@ -67,3 +67,16 @@ class TaggerChunker(nltk.ChunkParserI):
         chunks = [(c[0].encode('utf-8'), c[1], c[2]) for c in chunks]
 
         return chunks
+
+
+if __name__ == '__main__':
+    chunker = TaggerChunker()
+    stopwords = nltk.corpus.stopwords.words('english')
+    sent = 'Sucroferric oxyhydroxide was launched in the USA in 2014 for the treatment of hyperphosphatemia in adult dialysis patients.'
+    tokens = nltk.word_tokenize(sent)
+    important = [t for t in tokens if t not in stopwords]
+    print important
+    tags = nltk.pos_tag(tokens)
+    print tags
+    chunks = chunker.parse(tags)
+    print chunks

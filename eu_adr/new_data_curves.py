@@ -99,12 +99,26 @@ def build_pipeline(bag_of_words, orig_only):
         else:
             sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
 
+    elif bag_of_words == 3:
+        # NON-WORD FEATURES
+        clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
+                        ('normaliser', preprocessing.Normalizer(norm='l2')),
+                        ('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
+                        #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1))])
+                        #('svm', LinearSVC(dual=True, C=1))])
+        # set up extractor using desired features
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
+                                     entity_type=True, word_features=False, bag_of_words=False, bigrams=False)
+        if orig_only:
+            sim = pickle.load(open('pickles/orig_no_accents_similarities_features_only.p', 'rb'))
+        else:
+            sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
+
     else:
         # NON-WORD FEATURES
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
                         #('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
-                        #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=2, cache_size=2000, C=1))])
                         ('svm', LinearSVC(dual=True, C=1))])
         # set up extractor using desired features
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=True, combo=True,
@@ -124,7 +138,8 @@ def random_sampling(clf, extractor, orig_records, new_records, train_indices, te
     Folds are picked randomly
     """
     # set up array to hold scores
-    scores = np.zeros(shape=(splits, 3, 2))
+    #scores = np.zeros(shape=(splits, 3, 2))
+    scores = np.zeros(shape=(splits, 3))
     accuracy = np.zeros(shape=splits)
     # floor division to guarantee correct number of splits
     no_samples = len(train_indices)/splits
@@ -163,7 +178,8 @@ def uncertainty_sampling(clf, extractor, orig_records, new_records, train_indice
     Samples the classifier is least confident about predicting are selected first
     """
     # set up array to hold scores
-    scores = np.zeros(shape=(splits, 3, 2))
+    #scores = np.zeros(shape=(splits, 3, 2))
+    scores = np.zeros(shape=(splits, 3))
     accuracy = np.zeros(shape=splits)
     # floor division to guarantee correct number of splits
     no_samples = len(train_indices)/splits
@@ -332,7 +348,7 @@ def get_scores(clf, extractor, orig_records, new_records, train_indices, test_in
     # classify the test data
     predicted = clf.predict(test_data)
     # evaluate accuracy of output compared to correct classification
-    scores = precision_recall_fscore_support(test_labels, predicted)
+    scores = precision_recall_fscore_support(test_labels, predicted, average='micro')
 
     # for non random sampling need to return remaining data so confidence can be measured
     if rest_indices is not None:
@@ -365,6 +381,7 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     f_name = 'plots/%s_new_learning_comparison_%s_%s' % (seed, scoring, time_stamped('.png'))
     plt.savefig(f_name, format='png')
     plt.clf()
+    plt.close()
 
 
 def learning_method_comparison(splits, repeats, seed, bag_of_words=0, orig_only=False, word_features=0):
@@ -385,9 +402,12 @@ def learning_method_comparison(splits, repeats, seed, bag_of_words=0, orig_only=
     #sim = get_similarities(all_records, extractor)
     #sim = sim[len(orig_records):]
 
-    r_scores = np.zeros(shape=(repeats, splits, 3, 2))
-    u_scores = np.zeros(shape=(repeats, splits, 3, 2))
-    d_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    #r_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    #u_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    #d_scores = np.zeros(shape=(repeats, splits, 3, 2))
+    r_scores = np.zeros(shape=(repeats, splits, 3))
+    u_scores = np.zeros(shape=(repeats, splits, 3))
+    d_scores = np.zeros(shape=(repeats, splits, 3))
 
     r_accuracy = np.zeros(shape=(repeats, splits))
     u_accuracy = np.zeros(shape=(repeats, splits))
@@ -427,9 +447,9 @@ def learning_method_comparison(splits, repeats, seed, bag_of_words=0, orig_only=
     u_scores = u_scores.mean(axis=0, dtype=np.float64)
     d_scores = d_scores.mean(axis=0, dtype=np.float64)
     # then true and false
-    r_scores = r_scores.mean(axis=2, dtype=np.float64)
-    u_scores = u_scores.mean(axis=2, dtype=np.float64)
-    d_scores = d_scores.mean(axis=2, dtype=np.float64)
+    #r_scores = r_scores.mean(axis=2, dtype=np.float64)
+    #u_scores = u_scores.mean(axis=2, dtype=np.float64)
+    #d_scores = d_scores.mean(axis=2, dtype=np.float64)
 
     # using numpy slicing to select correct scores
     for i in xrange(3):
@@ -450,9 +470,9 @@ if __name__ == '__main__':
     start = time()
     #learning_method_comparison(repeats=10, splits=5)
     # CANNOT USE SEED ZERO
-    learning_method_comparison(repeats=5, splits=5, seed=2, bag_of_words=2, orig_only=False, word_features=5)
-    learning_method_comparison(repeats=5, splits=10, seed=2, bag_of_words=2, orig_only=False, word_features=5)
-    learning_method_comparison(repeats=5, splits=20, seed=2, bag_of_words=2, orig_only=False, word_features=5)
+    learning_method_comparison(repeats=5, splits=5, seed=3, bag_of_words=0, orig_only=False, word_features=0)
+    learning_method_comparison(repeats=5, splits=10, seed=3, bag_of_words=0, orig_only=False, word_features=0)
+    learning_method_comparison(repeats=5, splits=20, seed=3, bag_of_words=0, orig_only=False, word_features=0)
     #learning_method_comparison(repeats=10, splits=5, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=10, seed=2, bag_of_words=False)
     #learning_method_comparison(repeats=10, splits=20, seed=2, bag_of_words=False)

@@ -437,7 +437,7 @@ def tune_parameters(type):
                              ('svm', SVC(kernel='sigmoid', cache_size=2000))])
 
         param_grid = [{'svm__C': np.array([1, 10]), 'svm__gamma': np.array([0.001, 0.1, 1, 10]),
-                       'svm__coef0': np.array([1, 2, 3, 4])}]
+                       'svm__coef0': np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])}]
 
     clf = GridSearchCV(pipeline, param_grid, cv=cv, scoring='f1', n_jobs=-1, verbose=True)
     clf.fit(data, labels)
@@ -448,9 +448,9 @@ def tune_parameters(type):
 
 if __name__ == '__main__':
     #create_results()
-    #tune_parameters('bag_of_words')
+    tune_parameters('bag_of_words')
     #tune_parameters('sigmoid')
     #tune_parameters('linear')
     #tune_parameters('rbf')
-    tune_parameters('poly')
+    #tune_parameters('poly')
     #plot_roc_curve()

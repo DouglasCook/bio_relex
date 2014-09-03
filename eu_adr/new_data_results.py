@@ -49,18 +49,21 @@ def build_pipeline(which, train):
     """
     if which == 'bag_of_words':
         clf = Pipeline([('vectoriser', DictVectorizer()),
+                        #('scaler', preprocessing.StandardScaler(with_mean=False)),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
                         ('svm', LinearSVC(dual=True, C=1))])
         # set up extractor using desired features
-        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=False, pos=False, combo=True,
+        extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, pos=False, combo=True,
                                      entity_type=True, word_features=False, bag_of_words=True, bigrams=True)
 
     elif which == 'word_features':
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
+                        #('scaler', preprocessing.StandardScaler(with_mean=False)),
                         ('normaliser', preprocessing.Normalizer()),
-                        ('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=10, C=1, cache_size=2000))])
+                        #('svm', SVC(kernel='poly', coef0=1, degree=2, gamma=10, C=1, cache_size=2000))])
                         #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, C=1))])
                         #('svm', SVC(kernel='linear', cache_size=1000, C=1))])
+                        ('svm', LinearSVC(dual=True, C=1))])
 
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, word_features=True,
                                      combo=True, pos=True, entity_type=True, bag_of_words=False, bigrams=False)
@@ -68,11 +71,12 @@ def build_pipeline(which, train):
 
     else:
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
+                        #('scaler', preprocessing.StandardScaler(with_mean=False)),
                         ('normaliser', preprocessing.Normalizer()),
-                        ('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, C=1, cache_size=2000))])
+                        #('svm', SVC(kernel='poly', coef0=1, degree=3, gamma=1, C=1, cache_size=2000))])
                         #('svm', SVC(kernel='rbf', gamma=100, cache_size=1000, C=10))])
-                        #('svm', SVC(kernel='rbf', gamma=1, cache_size=1000, C=1))])
                         #('svm', SVC(kernel='linear', cache_size=1000, C=1))])
+                        ('svm', LinearSVC(dual=True, C=1))])
 
         extractor = FeatureExtractor(word_gap=False, count_dict=False, phrase_count=True, word_features=False,
                                      combo=True, pos=True, entity_type=True, bag_of_words=False, bigrams=False)
