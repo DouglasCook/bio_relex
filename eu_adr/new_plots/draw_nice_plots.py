@@ -54,8 +54,8 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
     plt.plot(ticks, u_score, label='Uncertainty Sampling')
     plt.plot(ticks, d_score, label='Density Sampling')
 
-    #plt.legend(loc='best')
-    plt.legend(loc=4)
+    plt.legend(loc='best')
+    #plt.legend(loc=4)
 
     f_name = '%s/%s_%s_splits.eps' % (folder, scoring, splits)
     # minimise the borders so they fit more nicely in report
@@ -119,6 +119,7 @@ if __name__ == '__main__':
     #do_dem('3_orig_features_rbf')
     #do_dem('4_orig_features_linear')
     #do_dem('5_new_data_bag_of_words', original=False)
-    do_dem('6_new_data_features_linear', original=False)
+    #do_dem('6_new_data_features_linear', original=False)
     #do_dem('7_orig_active_words')
     #do_dem('8_new_data_active_words', original=False)
+    do_dem('9_new_data_features_rbf', original=False)

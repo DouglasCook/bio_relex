@@ -100,7 +100,7 @@ def build_pipeline(bag_of_words, orig_only):
             sim = pickle.load(open('pickles/similarities_features_only.p', 'rb'))
 
     elif bag_of_words == 3:
-        # NON-WORD FEATURES
+        # NON-WORD FEATURES RBF
         clf = Pipeline([('vectoriser', DictVectorizer(sparse=False)),
                         ('normaliser', preprocessing.Normalizer(norm='l2')),
                         ('svm', SVC(kernel='rbf', gamma=100, cache_size=2000, C=10))])
@@ -348,7 +348,7 @@ def get_scores(clf, extractor, orig_records, new_records, train_indices, test_in
     # classify the test data
     predicted = clf.predict(test_data)
     # evaluate accuracy of output compared to correct classification
-    scores = precision_recall_fscore_support(test_labels, predicted, average='micro')
+    scores = precision_recall_fscore_support(test_labels, predicted, average='macro')
 
     # for non random sampling need to return remaining data so confidence can be measured
     if rest_indices is not None:
@@ -378,8 +378,8 @@ def draw_learning_comparison(splits, r_score, u_score, d_score, samples_per_spli
 
     plt.legend(loc='best')
 
-    f_name = 'plots/%s_new_learning_comparison_%s_%s' % (seed, scoring, time_stamped('.png'))
-    plt.savefig(f_name, format='png')
+    f_name = 'plots/%s_new_learning_comparison_%s_%s' % (seed, scoring, time_stamped('.tif'))
+    plt.savefig(f_name, format='tif')
     plt.clf()
     plt.close()
 
